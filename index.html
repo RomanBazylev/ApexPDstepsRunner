@@ -498,12 +498,14 @@
       <div class="card" id="zip-folders-card" style="display:none">
         <div class="card-title"><span>03</span>Выберите папки</div>
         <div class="field">
-          <label>Base path внутри архива</label>
-          <input id="zip-base-path" placeholder="scripts/apex/Post Deployment Scripts" value="" oninput="filterZipFolders()">
+          <label>Base path внутри архива <span style="color:var(--muted);font-weight:normal">(оставьте пустым чтобы видеть всё)</span></label>
+          <input id="zip-base-path" placeholder="оставьте пустым или scripts/apex/..." value="" oninput="filterZipFolders()">
         </div>
         <div id="zip-folder-list" class="file-tree"></div>
         <hr class="divider">
-        <div class="flex gap8 flex-end">
+        <div class="flex gap8 flex-end" style="flex-wrap:wrap">
+          <button class="btn" style="background:var(--surface2);color:var(--text)" onclick="goToStep1()">← Назад</button>
+          <div style="flex:1"></div>
           <button class="btn btn-sm" style="background:var(--surface2);color:var(--muted)" onclick="selectAll(true)">Выбрать все</button>
           <button class="btn btn-sm" style="background:var(--surface2);color:var(--muted)" onclick="selectAll(false)">Снять все</button>
           <button class="btn btn-primary" onclick="goToStep3()">Запустить →</button>
@@ -1192,6 +1194,13 @@ function maybeAutoAdvance() {
 // ══════════════════════════════════════════
 // NAVIGATION
 // ══════════════════════════════════════════
+function goToStep1() {
+  setStep(1);
+  document.getElementById('section-connect').style.display = '';
+  document.getElementById('section-select').style.display  = 'none';
+  document.getElementById('section-run').style.display     = 'none';
+}
+
 function goToStep2() {
   setStep(2);
   document.getElementById('section-connect').style.display = 'none';
@@ -1310,8 +1319,8 @@ async function handleZipFile(file) {
     const zip   = await JSZip.loadAsync(file);
     zipFiles = {};
 
-    const extsRaw = document.getElementById('zip-base-path')?.value || CONFIG.DEFAULT_EXTS;
-    const exts    = CONFIG.DEFAULT_EXTS.split(',').map(e => e.trim().toLowerCase());
+    const exts = (document.getElementById('file-exts')?.value || CONFIG.DEFAULT_EXTS)
+      .split(',').map(e => e.trim().toLowerCase());
 
     for (const [path, entry] of Object.entries(zip.files)) {
       if (entry.dir) continue;
@@ -1328,15 +1337,12 @@ async function handleZipFile(file) {
 
     showStatus('zip-status', `✅ Найдено ${count} скриптов в архиве`, 'pass');
 
-    // Set default base path from CONFIG, but clear if nothing matches
+    // Auto-detect base path: try CONFIG default, then empty
     const bpEl = document.getElementById('zip-base-path');
     if (!bpEl.value) bpEl.value = CONFIG.DEFAULT_PATH;
 
-    renderZipFolders();
-
-    // If base path yields no results, auto-clear it and re-render
-    const list = document.getElementById('zip-folder-list');
-    if (list.querySelector('.empty') || list.children.length === 0) {
+    if (!renderZipFolders()) {
+      // DEFAULT_PATH didn't match — clear and show all
       bpEl.value = '';
       renderZipFolders();
     }
@@ -1350,33 +1356,40 @@ async function handleZipFile(file) {
 
 function filterZipFolders() { renderZipFolders(); }
 
-// Detect common prefix in ZIP (GitHub ZIPs have "repo-branch/" prefix)
-function detectZipPrefix() {
-  const paths = Object.keys(zipFiles);
-  if (paths.length === 0) return '';
-  const first = paths[0].split('/')[0];
-  // If ALL paths share the same first segment, treat it as a prefix to strip
-  const allMatch = paths.every(p => p.startsWith(first + '/'));
-  return allMatch ? first + '/' : '';
-}
-
+// Returns true if any files were rendered
 function renderZipFolders() {
   const basePath = document.getElementById('zip-base-path').value.trim();
-  const exts     = CONFIG.DEFAULT_EXTS.split(',').map(e => e.trim().toLowerCase());
+  const exts     = (document.getElementById('file-exts')?.value || CONFIG.DEFAULT_EXTS)
+    .split(',').map(e => e.trim().toLowerCase());
   const list     = document.getElementById('zip-folder-list');
-  const prefix   = detectZipPrefix();
 
-  // Group files by folder relative to basePath
+  // Find common root prefix (GitHub ZIP: "repo-branch/", manual ZIP: maybe none)
+  const allPaths = Object.keys(zipFiles);
+  let prefix = '';
+  if (allPaths.length > 0) {
+    const segs = allPaths[0].split('/');
+    // Try progressively longer prefixes
+    for (let i = 1; i < segs.length; i++) {
+      const candidate = segs.slice(0, i).join('/') + '/';
+      if (allPaths.every(p => p.startsWith(candidate))) {
+        prefix = candidate;
+      } else {
+        break;
+      }
+    }
+  }
+
+  // Group files by folder
   const groups = {};
-  for (const path of Object.keys(zipFiles)) {
-    // Strip detected prefix (e.g. "repo-main/")
+  for (const path of allPaths) {
     const stripped = prefix ? path.slice(prefix.length) : path;
     if (basePath && !stripped.startsWith(basePath)) continue;
 
     const rel    = basePath ? stripped.slice(basePath.length).replace(/^\//, '') : stripped;
     const rparts = rel.split('/');
-    const folder = rparts.length > 1 ? rparts.slice(0, -1).join('/') : '(root)';
+    const folder = rparts.length > 1 ? rparts.slice(0, -1).join('/') : '(корень)';
     const fname  = rparts[rparts.length - 1];
+    if (!fname) continue;
     if (!exts.some(ext => fname.toLowerCase().endsWith(ext))) continue;
 
     if (!groups[folder]) groups[folder] = [];
@@ -1384,13 +1397,15 @@ function renderZipFolders() {
   }
 
   if (Object.keys(groups).length === 0) {
-    list.innerHTML = '<div class="empty">Нет скриптов по этому пути. Проверьте base path.</div>';
-    return;
+    list.innerHTML = '<div class="empty">Нет скриптов по этому пути. Очистите base path.</div>';
+    return false;
   }
 
   list.innerHTML = '';
+  let totalFiles = 0;
   Object.keys(groups).sort().forEach(folder => {
     const files = groups[folder].sort((a, b) => a.name.localeCompare(b.name));
+    totalFiles += files.length;
     const item  = document.createElement('div');
     item.className = 'folder-item';
     const safeAttr = folder.replace(/"/g, '&quot;');
@@ -1398,7 +1413,7 @@ function renderZipFolders() {
       <div class="folder-header" onclick="toggleFolder(this)">
         <input type="checkbox" class="folder-cb" data-folder="${safeAttr}" checked onclick="event.stopPropagation();syncFolder(this)">
         <span style="opacity:0.5">📁</span>
-        <span class="folder-name">${folder}</span>
+        <span class="folder-name">${escHtml(folder)}</span>
         <span class="folder-count">${files.length} скриптов</span>
         <span style="color:var(--muted);font-size:11px;margin-left:4px">▾</span>
       </div>
@@ -1406,13 +1421,14 @@ function renderZipFolders() {
         ${files.map(f => `
           <div class="script-item">
             <input type="checkbox" class="script-cb"
-              data-folder="${safeAttr}" data-file="${f.name}"
-              data-zip-path="${f.fullPath}" data-source="zip" checked>
-            <span>${f.name}</span>
+              data-folder="${safeAttr}" data-file="${escHtml(f.name)}"
+              data-zip-path="${escHtml(f.fullPath)}" data-source="zip" checked>
+            <span>${escHtml(f.name)}</span>
           </div>`).join('')}
       </div>`;
     list.appendChild(item);
   });
+  return totalFiles > 0;
 }
 
 async function loadJSZip() {
