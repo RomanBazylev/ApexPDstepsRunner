@@ -1328,11 +1328,19 @@ async function handleZipFile(file) {
 
     showStatus('zip-status', `✅ Найдено ${count} скриптов в архиве`, 'pass');
 
-    // Set default base path from CONFIG
+    // Set default base path from CONFIG, but clear if nothing matches
     const bpEl = document.getElementById('zip-base-path');
     if (!bpEl.value) bpEl.value = CONFIG.DEFAULT_PATH;
 
     renderZipFolders();
+
+    // If base path yields no results, auto-clear it and re-render
+    const list = document.getElementById('zip-folder-list');
+    if (list.querySelector('.empty') || list.children.length === 0) {
+      bpEl.value = '';
+      renderZipFolders();
+    }
+
     document.getElementById('zip-folders-card').style.display = '';
     document.getElementById('zip-drop-zone').style.borderColor = 'var(--green)';
   } catch(e) {
