@@ -328,8 +328,8 @@
   <div id="section-connect">
 
     <div class="setup-note" id="setup-note" style="background:var(--green-dim);border-color:rgba(61,214,140,0.2);color:var(--green)">
-      <strong>✅ No Connected App setup required</strong> — uses the public Salesforce CLI OAuth app (PlatformCLI).<br>
-      All you need: your org's Instance URL. GitHub token is pre-configured or entered once per device.
+      <strong>✅ No Connected App setup required</strong> — uses Device Flow with the public PlatformCLI app (no redirect URI needed).<br>
+      All you need: your org's Instance URL. You'll get a one-time code to enter on Salesforce.
       <a href="#" onclick="toggleSetup();return false" style="color:var(--green);margin-left:8px">Advanced settings ▾</a>
     </div>
 
@@ -383,9 +383,9 @@
       <div class="mt8 flex gap8" style="align-items:center">
         <button class="btn btn-sf" id="sf-btn" onclick="connectSF()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
-          Login with Salesforce SSO
+          Подключиться к Salesforce
         </button>
-        <span class="text-muted">→ opens your standard Salesforce login page</span>
+        <span class="text-muted">→ Device Flow: получите код и введите его на странице Salesforce</span>
       </div>
     </div>
 
@@ -890,15 +890,99 @@ function saveConfig() {
 function ghTab() {} // stub — больше не нужен
 
 // ══════════════════════════════════════════
-// SALESFORCE AUTH (PKCE)
+// SALESFORCE AUTH — Device Flow (default) + PKCE (custom app)
 // ══════════════════════════════════════════
+let _devicePollTimer = null;
+
 async function connectSF() {
   saveConfig();
-  const clientId  = document.getElementById('sf-client-id').value.trim() || 'PlatformCLI';
-  const instance  = document.getElementById('sf-instance').value.trim().replace(/\/$/, '');
+  const clientId = document.getElementById('sf-client-id').value.trim();
+  const instance = document.getElementById('sf-instance').value.trim().replace(/\/$/, '');
   if (!instance) { alert('Введите Instance URL вашей org (например: https://mycompany.my.salesforce.com)'); return; }
 
-  // PKCE
+  if (clientId) {
+    // Custom Connected App → use PKCE redirect flow
+    return connectSF_PKCE(clientId, instance);
+  }
+  // Default: Device Authorization Flow (no redirect_uri needed)
+  return connectSF_Device(instance);
+}
+
+// ── Device Authorization Flow ──
+async function connectSF_Device(instance) {
+  showStatus('sf-status', '⏳ Запрашиваю код устройства…', 'warn');
+  try {
+    const res = await fetch(`${instance}/services/oauth2/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ response_type: 'device_code', client_id: 'PlatformCLI', scope: 'api refresh_token' }),
+    });
+    const data = await res.json();
+    if (!data.device_code || !data.user_code) {
+      showStatus('sf-status', '❌ ' + (data.error_description || JSON.stringify(data)), 'fail');
+      return;
+    }
+    showDeviceCodeUI(data, instance);
+    startDevicePoll(data.device_code, data.interval || 5, instance);
+  } catch (e) {
+    showStatus('sf-status', '❌ Ошибка: ' + e.message, 'fail');
+  }
+}
+
+function showDeviceCodeUI(data, instance) {
+  const el = document.getElementById('sf-status');
+  const verifyUrl = data.verification_uri || `${instance}/setup/connect`;
+  el.innerHTML = `
+    <div style="background:var(--accent-dim);border:1px solid rgba(124,106,247,0.3);border-radius:var(--radius);padding:20px;text-align:center">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Откройте ссылку и введите код:</div>
+      <a href="${verifyUrl}" target="_blank" rel="noopener" style="color:var(--accent);font-size:13px;word-break:break-all">${verifyUrl}</a>
+      <div style="font-family:var(--mono);font-size:28px;letter-spacing:4px;margin:14px 0;color:var(--text);user-select:all">${data.user_code}</div>
+      <button class="btn btn-sm" style="background:var(--surface2);border:1px solid var(--border);color:var(--text)" onclick="navigator.clipboard.writeText('${data.user_code}')">
+        📋 Скопировать код
+      </button>
+      <div style="font-size:11px;color:var(--muted);margin-top:12px">⏳ Ожидаю подтверждение… <button class="btn btn-sm btn-danger" style="margin-left:8px" onclick="cancelDevicePoll()">Отмена</button></div>
+    </div>`;
+}
+
+function startDevicePoll(deviceCode, interval, instance) {
+  cancelDevicePoll();
+  _devicePollTimer = setInterval(async () => {
+    try {
+      const res = await fetch(`${instance}/services/oauth2/token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ grant_type: 'device', client_id: 'PlatformCLI', code: deviceCode }),
+      });
+      const data = await res.json();
+      if (data.access_token) {
+        cancelDevicePoll();
+        STATE.sfToken    = data.access_token;
+        STATE.sfInstance = data.instance_url || instance;
+        sessionStorage.setItem('sf_token', STATE.sfToken);
+        sessionStorage.setItem('sf_instance', STATE.sfInstance);
+        await fetchSFUser();
+        onSFConnected();
+      } else if (data.error === 'authorization_pending') {
+        // keep polling
+      } else if (data.error === 'slow_down') {
+        // increase interval (handled by SF returning a new interval)
+      } else {
+        cancelDevicePoll();
+        showStatus('sf-status', '❌ ' + (data.error_description || data.error || JSON.stringify(data)), 'fail');
+      }
+    } catch (e) {
+      cancelDevicePoll();
+      showStatus('sf-status', '❌ Ошибка polling: ' + e.message, 'fail');
+    }
+  }, interval * 1000);
+}
+
+function cancelDevicePoll() {
+  if (_devicePollTimer) { clearInterval(_devicePollTimer); _devicePollTimer = null; }
+}
+
+// ── PKCE flow (for custom Connected Apps) ──
+async function connectSF_PKCE(clientId, instance) {
   const verifier  = generateVerifier();
   const challenge = await generateChallenge(verifier);
   sessionStorage.setItem('sf_verifier', verifier);
