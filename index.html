@@ -95,7 +95,9 @@
     color: var(--muted); padding: 6px 14px 6px 0;
     border-bottom: 2px solid var(--border);
     flex: 1; transition: all 0.2s;
+    cursor: pointer; user-select: none;
   }
+  .step:hover { color: var(--text); }
   .step.active { color: var(--text); border-bottom-color: var(--accent); }
   .step.done { color: var(--green); border-bottom-color: var(--green); }
   .step-num {
@@ -256,6 +258,20 @@
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 3px; }
 
+  /* ── UTILITY ── */
+  .flex { display: flex; align-items: center; }
+  .flex-end { justify-content: flex-end; }
+  .flex-wrap { flex-wrap: wrap; }
+  .gap4  { gap: 4px; }
+  .gap8  { gap: 8px; }
+  .gap12 { gap: 12px; }
+  .mt8   { margin-top: 8px; }
+  .mt16  { margin-top: 16px; }
+  .ml-auto { margin-left: auto; }
+  .text-muted { font-size: 12px; color: var(--muted); }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+  .visually-hidden { display: none; }
+
   /* grid 2-col */
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   @media(max-width: 600px) { .grid2 { grid-template-columns: 1fr; } main { padding: 20px 16px; } header { padding: 12px 16px; } }
@@ -319,9 +335,9 @@
 <div id="view-app">
   <!-- STEP INDICATOR -->
   <div class="steps" id="steps">
-    <div class="step active" id="step-1"><div class="step-num">1</div> Connect</div>
-    <div class="step" id="step-2"><div class="step-num">2</div> Select scripts</div>
-    <div class="step" id="step-3"><div class="step-num">3</div> Run</div>
+    <div class="step active" id="step-1" onclick="onStepClick(1)"><div class="step-num">1</div> Connect</div>
+    <div class="step" id="step-2" onclick="onStepClick(2)"><div class="step-num">2</div> Select scripts</div>
+    <div class="step" id="step-3" onclick="onStepClick(3)"><div class="step-num">3</div> Run</div>
   </div>
 
   <!-- SECTION 1: CONNECT -->
@@ -345,6 +361,49 @@
 
       <!-- Login form (shown when not connected) -->
       <div id="sf-login-form">
+
+        <!-- CORS Proxy -->
+        <div class="field" style="margin-bottom:16px;padding:12px 16px;background:var(--amber-dim);border:1px solid rgba(251,191,36,0.15);border-radius:8px">
+          <label style="color:var(--amber)">🌐 CORS Proxy URL <span style="font-weight:normal">(обязательно)</span></label>
+          <input id="sf-cors-proxy" placeholder="https://your-worker.workers.dev" value="" style="margin-bottom:6px">
+          <details>
+            <summary style="font-size:11px;color:var(--muted);cursor:pointer">📖 Как создать прокси бесплатно за 1 мин</summary>
+            <div style="font-size:11px;color:var(--muted);line-height:1.9;background:var(--surface2);padding:12px;border-radius:8px;margin-top:6px">
+              Браузер блокирует запросы к SF API с другого домена (CORS). Прокси обходит это.<br><br>
+              <strong>Cloudflare Worker (бесплатно):</strong><br>
+              1. <code>dash.cloudflare.com</code> → Workers & Pages → Create Worker<br>
+              2. Замените код на:<br>
+              <div style="background:var(--surface);padding:8px;border-radius:4px;margin:6px 0;font-family:var(--mono);font-size:10px;white-space:pre;overflow-x:auto">export default {
+  async fetch(request) {
+    const cors = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': '*',
+      'Access-Control-Allow-Methods': '*',
+    };
+    if (request.method === 'OPTIONS')
+      return new Response(null, { headers: cors });
+    const url = new URL(request.url);
+    const target = url.pathname.slice(1) + url.search;
+    if (!target)
+      return new Response('OK', { headers: cors });
+    const h = new Headers(request.headers);
+    h.delete('origin'); h.delete('referer');
+    const r = await fetch(target, {
+      method: request.method, headers: h,
+      body: request.method !== 'GET'
+        ? request.body : undefined,
+    });
+    const resp = new Response(r.body, r);
+    for (const [k,v] of Object.entries(cors))
+      resp.headers.set(k, v);
+    return resp;
+  }
+};</div>
+              3. Deploy → скопируйте URL воркера сюда
+            </div>
+          </details>
+        </div>
+
         <!-- Method tabs: Session ID first (most common for SSO users) -->
         <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
           <button class="btn btn-sm" id="sf-tab-token" onclick="switchSFTab('token')" style="background:var(--accent);color:#fff">🔑 Session ID (SSO)</button>
@@ -559,6 +618,8 @@
         </div>
         <hr class="divider">
         <div class="flex gap8 flex-end">
+          <button class="btn" style="background:var(--surface2);color:var(--text)" onclick="goToStep1()">← Назад</button>
+          <div style="flex:1"></div>
           <button class="btn btn-sm" style="background:var(--surface2);color:var(--muted)" onclick="selectAll(true)">Выбрать все</button>
           <button class="btn btn-sm" style="background:var(--surface2);color:var(--muted)" onclick="selectAll(false)">Снять все</button>
           <button class="btn btn-primary" onclick="goToStep3()">Запустить →</button>
@@ -583,15 +644,16 @@
         <div class="progress-fill" id="progress-fill" style="width:0%"></div>
       </div>
       <div class="run-log" id="run-log">
-        <div class="empty"><div class="empty-icon">⚡</div>Results will appear here</div>
+        <div class="empty"><div class="empty-icon">⚡</div>Press ▶ Run to start</div>
       </div>
       <hr class="divider">
-      <div class="flex gap8">
+      <!-- Action bar: left = nav, center = primary action, right = post-run actions -->
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <button class="btn" style="background:var(--surface2);color:var(--text)" onclick="goToStep2()">← Back</button>
-        <button class="btn btn-primary" id="run-btn" onclick="runScripts()">▶ Run scripts</button>
+        <button class="btn btn-primary" id="run-btn" onclick="runScripts()" style="padding:10px 28px">▶ Run scripts</button>
         <div style="margin-left:auto;display:flex;gap:8px">
-          <button class="btn btn-sm" style="background:var(--surface2);color:var(--muted)" id="view-report-btn" onclick="navTo('report')" style="display:none">📊 View report</button>
-          <button class="btn btn-sm" style="background:var(--surface2);color:var(--muted)" id="export-btn" onclick="exportReportHTML()">⬇ Export HTML</button>
+          <button class="btn btn-sm" style="background:var(--green-dim);color:var(--green);display:none" id="view-report-btn" onclick="navTo('report')">📊 Report</button>
+          <button class="btn btn-sm" style="background:var(--surface2);color:var(--muted);display:none" id="export-btn" onclick="exportReportHTML()">⬇ Export</button>
         </div>
       </div>
     </div>
@@ -894,6 +956,7 @@ function init() {
     document.getElementById('sf-instance-oauth').value = saved.sfInstance;
   }
   if (saved.sfClientId)  document.getElementById('sf-client-id').value = saved.sfClientId;
+  if (saved.sfCorsProxy) document.getElementById('sf-cors-proxy').value = saved.sfCorsProxy;
   if (saved.scriptsPath) document.getElementById('scripts-path').value = saved.scriptsPath;
   if (saved.fileExts)    document.getElementById('file-exts').value    = saved.fileExts;
 
@@ -940,6 +1003,7 @@ function saveConfig() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({
     sfClientId:  document.getElementById('sf-client-id').value,
     sfInstance:  inst,
+    sfCorsProxy: document.getElementById('sf-cors-proxy').value,
     scriptsPath: document.getElementById('scripts-path').value,
     fileExts:    document.getElementById('file-exts').value,
   }));
@@ -1035,8 +1099,12 @@ async function connectSFToken() {
   saveConfig();
   const instance = document.getElementById('sf-instance-token').value.trim().replace(/\/$/, '');
   const token    = document.getElementById('sf-manual-token').value.trim();
+  const proxy    = (document.getElementById('sf-cors-proxy')?.value || '').trim();
   if (!instance) { alert('Введите Instance URL (скопируйте из адресной строки до .com)'); return; }
   if (!token) { alert('Вставьте Session ID из Cookie (sid=...)'); return; }
+  if (!proxy) {
+    if (!confirm('CORS Proxy URL не указан — запросы к Salesforce API скорее всего будут заблокированы браузером.\n\nПродолжить без прокси?')) return;
+  }
 
   STATE.sfToken    = token;
   STATE.sfInstance = instance;
@@ -1227,9 +1295,12 @@ function goToStep3() {
   const title = document.getElementById('run-title');
   title.innerHTML = `<span>▶</span>Ready — ${selected.length} script(s) selected`;
   STATE.results = [];
-  document.getElementById('run-log').innerHTML = '<div class="empty"><div class="empty-icon">⚡</div>Press Run to start</div>';
+  document.getElementById('run-log').innerHTML = '<div class="empty"><div class="empty-icon">⚡</div>Press ▶ Run to start</div>';
   document.getElementById('summary').style.display = 'none';
   document.getElementById('run-btn').disabled = false;
+  document.getElementById('run-btn').textContent = '▶ Run scripts';
+  document.getElementById('view-report-btn').style.display = 'none';
+  document.getElementById('export-btn').style.display = 'none';
 }
 
 function setStep(n) {
@@ -1237,6 +1308,18 @@ function setStep(n) {
     const el = document.getElementById('step-' + i);
     el.className = 'step' + (i < n ? ' done' : i === n ? ' active' : '');
     el.querySelector('.step-num').textContent = i < n ? '✓' : i;
+  }
+}
+
+function onStepClick(n) {
+  // Only allow going back to already-completed steps, or current step
+  if (n === 1) goToStep1();
+  else if (n === 2 && STATE.sfToken) goToStep2();
+  else if (n === 3 && STATE.selectedScripts && STATE.selectedScripts.length > 0) {
+    setStep(3);
+    document.getElementById('section-connect').style.display = 'none';
+    document.getElementById('section-select').style.display  = 'none';
+    document.getElementById('section-run').style.display     = 'block';
   }
 }
 
@@ -1628,6 +1711,10 @@ async function runScripts() {
       }
 
       const res  = await sfFetch('/services/data/v59.0/tooling/executeAnonymous/?anonymousBody=' + encodeURIComponent(body));
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '');
+        throw new Error(`HTTP ${res.status}: ${errText.slice(0, 200) || res.statusText}`);
+      }
       const data = await res.json();
       const ms   = Date.now() - start;
       const ok   = data.compiled && data.success;
@@ -1650,8 +1737,15 @@ async function runScripts() {
       if (ok) pass++; else fail++;
     } catch(e) {
       const ms = Date.now() - start;
-      resultEntry = { folder: s.folder, script: s.name, status: 'fail', ms, errorMsg: e.message, errorLine: null, errorType: 'Error', sfLog: '', body: '' };
-      updateLogRow(rowId, 'fail', e.message, ms);
+      let msg = e.message;
+      if (msg === 'Failed to fetch') {
+        const proxy = (document.getElementById('sf-cors-proxy')?.value || '').trim();
+        msg = proxy
+          ? 'CORS/Network error — проверьте URL прокси и Instance URL'
+          : 'CORS error — укажите CORS Proxy URL в секции Connect (шаг 1)';
+      }
+      resultEntry = { folder: s.folder, script: s.name, status: 'fail', ms, errorMsg: msg, errorLine: null, errorType: 'Error', sfLog: '', body: '' };
+      updateLogRow(rowId, 'fail', msg, ms);
       fail++;
     }
     STATE.results.push(resultEntry);
@@ -1682,6 +1776,7 @@ async function runScripts() {
 
   finalizeReport(run);
   document.getElementById('view-report-btn').style.display = '';
+  document.getElementById('export-btn').style.display = '';
 }
 
 function updateSummary(pass, fail, total, ms) {
@@ -1980,10 +2075,16 @@ function exportReportHTMLFromRun(run) {
 // HELPERS
 // ══════════════════════════════════════════
 function sfFetch(path, opts = {}) {
-  return fetch(STATE.sfInstance + path, {
-    ...opts,
-    headers: { Authorization: 'Bearer ' + STATE.sfToken, 'Content-Type': 'application/json', ...(opts.headers||{}) },
-  });
+  const baseUrl = STATE.sfInstance + path;
+  const proxy = (document.getElementById('sf-cors-proxy')?.value || '').trim().replace(/\/$/, '');
+  const url = proxy ? proxy + '/' + baseUrl : baseUrl;
+  const method = (opts.method || 'GET').toUpperCase();
+  const headers = { Authorization: 'Bearer ' + STATE.sfToken, ...(opts.headers||{}) };
+  // Only set Content-Type for requests with a body (POST/PUT/PATCH)
+  if (method !== 'GET' && method !== 'HEAD' && method !== 'DELETE') {
+    headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+  }
+  return fetch(url, { ...opts, headers });
 }
 
 function ghFetch(url, opts = {}) {
