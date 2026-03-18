@@ -7,7 +7,34 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
+  /* ── LIGHT THEME (default) ── */
   :root {
+    --bg: #f5f5f7;
+    --surface: #ffffff;
+    --surface2: #eeeef0;
+    --border: rgba(0,0,0,0.08);
+    --border-bright: rgba(0,0,0,0.15);
+    --text: #1a1a2e;
+    --muted: #6b6b80;
+    --sf: #0070d2;
+    --sf-dim: rgba(0,112,210,0.08);
+    --gh: #24292f;
+    --gh-dim: rgba(36,41,47,0.06);
+    --green: #22a667;
+    --green-dim: rgba(34,166,103,0.08);
+    --red: #dc2626;
+    --red-dim: rgba(220,38,38,0.07);
+    --amber: #d97706;
+    --amber-dim: rgba(217,119,6,0.07);
+    --accent: #6c5ce7;
+    --accent-dim: rgba(108,92,231,0.1);
+    --mono: 'Space Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+    --radius: 10px;
+    --header-bg: rgba(255,255,255,0.85);
+  }
+  /* ── DARK THEME ── */
+  [data-theme="dark"] {
     --bg: #0a0a0f;
     --surface: #13131a;
     --surface2: #1c1c27;
@@ -27,9 +54,7 @@
     --amber-dim: rgba(251,191,36,0.1);
     --accent: #7c6af7;
     --accent-dim: rgba(124,106,247,0.15);
-    --mono: 'Space Mono', monospace;
-    --sans: 'DM Sans', sans-serif;
-    --radius: 10px;
+    --header-bg: rgba(10,10,15,0.8);
   }
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html { font-size: 14px; }
@@ -47,10 +72,16 @@
     display: flex; align-items: center; justify-content: space-between;
     padding: 16px 32px;
     border-bottom: 1px solid var(--border);
-    background: rgba(10,10,15,0.8);
+    background: var(--header-bg);
     backdrop-filter: blur(12px);
     position: sticky; top: 0; z-index: 100;
   }
+  .theme-toggle {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+    padding: 6px 10px; cursor: pointer; font-size: 14px; line-height: 1;
+    transition: all 0.15s; color: var(--text);
+  }
+  .theme-toggle:hover { border-color: var(--accent); }
   .logo { font-family: var(--mono); font-size: 15px; letter-spacing: -0.5px; }
   .logo span { color: var(--accent); }
   .badges { display: flex; gap: 8px; }
@@ -276,7 +307,10 @@
     <button class="nav-tab" id="nav-report" onclick="navTo('report')">Report <span id="nav-report-badge" style="display:none;background:var(--red);color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;margin-left:4px"></span></button>
     <button class="nav-tab" id="nav-docs" onclick="navTo('docs')">Docs</button>
   </nav>
-  <div class="badges" id="header-badges"></div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <div class="badges" id="header-badges"></div>
+    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark theme" id="theme-btn">🌙</button>
+  </div>
 </header>
 
 <main>
@@ -779,6 +813,25 @@ const STORAGE_KEY = 'apex_runner_config';
 // ══════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════
+// ══════════════════════════════════════════
+// THEME
+// ══════════════════════════════════════════
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('apex_runner_theme', theme);
+  const btn = document.getElementById('theme-btn');
+  if (btn) btn.textContent = theme === 'dark' ? '☀️' : '🌙';
+}
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') || 'light';
+  applyTheme(current === 'dark' ? 'light' : 'dark');
+}
+// Apply saved theme immediately (before full init)
+(function() {
+  const saved = localStorage.getItem('apex_runner_theme') || 'light';
+  applyTheme(saved);
+})();
+
 function init() {
   const origin = location.origin + location.pathname.replace(/\/$/, '');
   const sfCbEl = document.getElementById('sf-callback-display');
