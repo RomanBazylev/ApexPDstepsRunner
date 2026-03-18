@@ -1099,13 +1099,20 @@ async function fetchSFUser() {
 
 function onSFConnected(silent) {
   const user = STATE.sfUser || 'connected';
-  showStatus('sf-status', `✓ Вы вошли как ${user}`, 'pass');
-  document.getElementById('sf-btn').innerHTML = '✓ Подключено';
-  document.getElementById('sf-btn').disabled = true;
+  const msg  = `✓ Вы вошли как ${user}`;
+  // Update status on ALL tabs
+  ['sf-status', 'sf-status-token', 'sf-status-oauth'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) showStatus(id, msg, 'pass');
+  });
+  // Disable buttons on ALL tabs
+  ['sf-btn', 'sf-btn-token', 'sf-btn-oauth'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.innerHTML = '✓ Подключено'; el.disabled = true; }
+  });
   const inst = (STATE.sfInstance||'').replace(/https?:\/\//,'').split('/')[0];
   updateHeaderBadge('sf', inst);
   if (!silent) {
-    // After fresh login — auto-advance if GH token already in CONFIG
     setTimeout(() => maybeAutoAdvance(), 400);
   } else {
     checkBothConnected();
