@@ -1194,10 +1194,9 @@ function checkBothConnected() {
   }
 }
 
-// Auto-advance to step 2 after SF login if GH is pre-configured
+// Auto-advance to step 2 after SF login
 function maybeAutoAdvance() {
-  if (CONFIG.GH_TOKEN || STATE.ghToken) goToStep2();
-  else checkBothConnected();
+  if (STATE.sfToken) goToStep2();
 }
 
 // ══════════════════════════════════════════
