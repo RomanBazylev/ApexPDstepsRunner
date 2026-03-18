@@ -327,24 +327,23 @@
   <!-- SECTION 1: CONNECT -->
   <div id="section-connect">
 
-    <div class="setup-note" id="setup-note" style="background:var(--green-dim);border-color:rgba(61,214,140,0.2);color:var(--green)">
-      <strong>✅ No Connected App setup required</strong> — uses Device Flow with the public PlatformCLI app (no redirect URI needed).<br>
-      All you need: your org's Instance URL. You'll get a one-time code to enter on Salesforce.
-      <a href="#" onclick="toggleSetup();return false" style="color:var(--green);margin-left:8px">Advanced settings ▾</a>
-    </div>
-
-    <div id="setup-details" style="display:none">
-      <div class="card" style="border-color:rgba(251,191,36,0.2)">
-        <div class="card-title"><span>⚙️</span>Advanced settings (optional)</div>
+    <!-- One-time setup instructions -->
+    <div class="card" style="border-color:rgba(251,191,36,0.2);margin-bottom:20px">
+      <div class="card-title"><span>⚙️</span>One-time setup (2 min)</div>
+      <details id="setup-details">
+        <summary style="cursor:pointer;font-size:13px;color:var(--text);margin-bottom:12px">
+          <strong>Create a Connected App in Salesforce</strong> <span style="color:var(--muted);font-size:12px">— only needs to be done once per org</span>
+        </summary>
         <div class="grid2">
           <div>
-            <div class="card-title" style="margin-bottom:8px"><span>SF</span>Custom Connected App</div>
+            <div class="card-title" style="margin-bottom:8px"><span>SF</span>Connected App</div>
             <ol style="padding-left:20px;line-height:2;font-size:12px;color:var(--muted)">
-              <li>Setup → App Manager → New Connected App</li>
+              <li>Setup → App Manager → <strong style="color:var(--text)">New Connected App</strong></li>
+              <li>Enable OAuth Settings ✓</li>
               <li>Callback URL: <code id="sf-callback-display"></code></li>
-              <li>Scopes: <code>api</code>, <code>refresh_token</code></li>
-              <li>Enable <strong>PKCE</strong>, no secret required</li>
-              <li>Copy Consumer Key → paste below</li>
+              <li>Selected OAuth Scopes: <code>api</code>, <code>refresh_token</code></li>
+              <li>No secret required, PKCE optional</li>
+              <li>Save → wait 2–10 min → copy <strong style="color:var(--text)">Consumer Key</strong></li>
             </ol>
           </div>
           <div>
@@ -358,34 +357,33 @@
             </ol>
           </div>
         </div>
-        <hr class="divider">
-        <div class="grid2">
-          <div class="field">
-            <label>Consumer Key (custom Connected App only)</label>
-            <input id="sf-client-id" placeholder="Leave empty to use PlatformCLI" value="">
-          </div>
-          <div class="field">
-            <label>GitHub PAT (if not pre-configured)</label>
-            <input id="gh-pat-advanced" type="password" placeholder="ghp_..." autocomplete="off">
-          </div>
-        </div>
+      </details>
+      <div class="field" style="margin-top:4px">
+        <label>GitHub PAT (if not pre-configured)</label>
+        <input id="gh-pat-advanced" type="password" placeholder="ghp_..." autocomplete="off">
       </div>
     </div>
 
     <!-- Main connect card -->
     <div class="card">
       <div class="card-title"><span>SF</span>Connect to Salesforce</div>
-      <div class="field">
-        <label>Instance URL</label>
-        <input id="sf-instance" placeholder="https://yourcompany.my.salesforce.com" value="">
+      <div class="grid2">
+        <div class="field">
+          <label>Instance URL</label>
+          <input id="sf-instance" placeholder="https://yourcompany.my.salesforce.com" value="">
+        </div>
+        <div class="field">
+          <label>Consumer Key</label>
+          <input id="sf-client-id" placeholder="3MVG9..." value="">
+        </div>
       </div>
       <div id="sf-status" class="mt8"></div>
       <div class="mt8 flex gap8" style="align-items:center">
         <button class="btn btn-sf" id="sf-btn" onclick="connectSF()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
-          Подключиться к Salesforce
+          Login with Salesforce SSO
         </button>
-        <span class="text-muted">→ Device Flow: получите код и введите его на странице Salesforce</span>
+        <span class="text-muted">→ откроет страницу логина Salesforce</span>
       </div>
     </div>
 
@@ -862,12 +860,14 @@ function init() {
 
   if (hash.get('access_token')) {
     STATE.sfToken    = hash.get('access_token');
-    STATE.sfInstance = hash.get('instance_url') || document.getElementById('sf-instance').value;
+    STATE.sfInstance = hash.get('instance_url') || sessionStorage.getItem('sf_instance_pending') || document.getElementById('sf-instance').value;
+    sessionStorage.setItem('sf_token', STATE.sfToken);
+    sessionStorage.setItem('sf_instance', STATE.sfInstance);
     history.replaceState({}, '', location.pathname);
-    onSFConnected();
-  } else if (params.get('code') && params.get('state')) {
-    const st = params.get('state');
-    if (st === 'sf_pkce') handleSFPKCE(params.get('code'));
+    fetchSFUser().then(() => onSFConnected());
+  } else if (params.get('error')) {
+    const desc = decodeURIComponent(params.get('error_description') || params.get('error'));
+    showStatus('sf-status', '❌ ' + desc, 'fail');
     history.replaceState({}, '', location.pathname);
   }
 
@@ -890,140 +890,25 @@ function saveConfig() {
 function ghTab() {} // stub — больше не нужен
 
 // ══════════════════════════════════════════
-// SALESFORCE AUTH — Device Flow (default) + PKCE (custom app)
+// SALESFORCE AUTH — Implicit (User-Agent) Flow
 // ══════════════════════════════════════════
-let _devicePollTimer = null;
-
 async function connectSF() {
   saveConfig();
   const clientId = document.getElementById('sf-client-id').value.trim();
   const instance = document.getElementById('sf-instance').value.trim().replace(/\/$/, '');
   if (!instance) { alert('Введите Instance URL вашей org (например: https://mycompany.my.salesforce.com)'); return; }
+  if (!clientId) { alert('Введите Consumer Key из вашего Connected App. Инструкция — в блоке "One-time setup" выше.'); return; }
 
-  if (clientId) {
-    // Custom Connected App → use PKCE redirect flow
-    return connectSF_PKCE(clientId, instance);
-  }
-  // Default: Device Authorization Flow (no redirect_uri needed)
-  return connectSF_Device(instance);
-}
-
-// ── Device Authorization Flow ──
-async function connectSF_Device(instance) {
-  showStatus('sf-status', '⏳ Запрашиваю код устройства…', 'warn');
-  try {
-    const res = await fetch(`${instance}/services/oauth2/token`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ response_type: 'device_code', client_id: 'PlatformCLI', scope: 'api refresh_token' }),
-    });
-    const data = await res.json();
-    if (!data.device_code || !data.user_code) {
-      showStatus('sf-status', '❌ ' + (data.error_description || JSON.stringify(data)), 'fail');
-      return;
-    }
-    showDeviceCodeUI(data, instance);
-    startDevicePoll(data.device_code, data.interval || 5, instance);
-  } catch (e) {
-    showStatus('sf-status', '❌ Ошибка: ' + e.message, 'fail');
-  }
-}
-
-function showDeviceCodeUI(data, instance) {
-  const el = document.getElementById('sf-status');
-  const verifyUrl = data.verification_uri || `${instance}/setup/connect`;
-  el.innerHTML = `
-    <div style="background:var(--accent-dim);border:1px solid rgba(124,106,247,0.3);border-radius:var(--radius);padding:20px;text-align:center">
-      <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Откройте ссылку и введите код:</div>
-      <a href="${verifyUrl}" target="_blank" rel="noopener" style="color:var(--accent);font-size:13px;word-break:break-all">${verifyUrl}</a>
-      <div style="font-family:var(--mono);font-size:28px;letter-spacing:4px;margin:14px 0;color:var(--text);user-select:all">${data.user_code}</div>
-      <button class="btn btn-sm" style="background:var(--surface2);border:1px solid var(--border);color:var(--text)" onclick="navigator.clipboard.writeText('${data.user_code}')">
-        📋 Скопировать код
-      </button>
-      <div style="font-size:11px;color:var(--muted);margin-top:12px">⏳ Ожидаю подтверждение… <button class="btn btn-sm btn-danger" style="margin-left:8px" onclick="cancelDevicePoll()">Отмена</button></div>
-    </div>`;
-}
-
-function startDevicePoll(deviceCode, interval, instance) {
-  cancelDevicePoll();
-  _devicePollTimer = setInterval(async () => {
-    try {
-      const res = await fetch(`${instance}/services/oauth2/token`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ grant_type: 'device', client_id: 'PlatformCLI', code: deviceCode }),
-      });
-      const data = await res.json();
-      if (data.access_token) {
-        cancelDevicePoll();
-        STATE.sfToken    = data.access_token;
-        STATE.sfInstance = data.instance_url || instance;
-        sessionStorage.setItem('sf_token', STATE.sfToken);
-        sessionStorage.setItem('sf_instance', STATE.sfInstance);
-        await fetchSFUser();
-        onSFConnected();
-      } else if (data.error === 'authorization_pending') {
-        // keep polling
-      } else if (data.error === 'slow_down') {
-        // increase interval (handled by SF returning a new interval)
-      } else {
-        cancelDevicePoll();
-        showStatus('sf-status', '❌ ' + (data.error_description || data.error || JSON.stringify(data)), 'fail');
-      }
-    } catch (e) {
-      cancelDevicePoll();
-      showStatus('sf-status', '❌ Ошибка polling: ' + e.message, 'fail');
-    }
-  }, interval * 1000);
-}
-
-function cancelDevicePoll() {
-  if (_devicePollTimer) { clearInterval(_devicePollTimer); _devicePollTimer = null; }
-}
-
-// ── PKCE flow (for custom Connected Apps) ──
-async function connectSF_PKCE(clientId, instance) {
-  const verifier  = generateVerifier();
-  const challenge = await generateChallenge(verifier);
-  sessionStorage.setItem('sf_verifier', verifier);
+  // Save instance so we can read it back after redirect
   sessionStorage.setItem('sf_instance_pending', instance);
-  sessionStorage.setItem('sf_client_id', clientId);
 
   const redirect = location.origin + location.pathname;
   const url = `${instance}/services/oauth2/authorize`
-    + `?response_type=code&client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirect)}`
-    + `&code_challenge=${challenge}&code_challenge_method=S256&state=sf_pkce`
-    + `&scope=api%20refresh_token`;
+    + `?response_type=token`
+    + `&client_id=${encodeURIComponent(clientId)}`
+    + `&redirect_uri=${encodeURIComponent(redirect)}`
+    + `&scope=${encodeURIComponent('api refresh_token')}`;
   location.href = url;
-}
-
-async function handleSFPKCE(code) {
-  const verifier  = sessionStorage.getItem('sf_verifier');
-  const instance  = sessionStorage.getItem('sf_instance_pending');
-  const clientId  = sessionStorage.getItem('sf_client_id');
-  const redirect  = location.origin + location.pathname;
-
-  // Token exchange — SF supports PKCE without secret
-  const res = await fetch(`${instance}/services/oauth2/token`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'authorization_code', code,
-      client_id: clientId, redirect_uri: redirect,
-      code_verifier: verifier,
-    }),
-  });
-  const data = await res.json();
-  if (data.access_token) {
-    STATE.sfToken    = data.access_token;
-    STATE.sfInstance = data.instance_url || instance;
-    sessionStorage.setItem('sf_token', STATE.sfToken);
-    sessionStorage.setItem('sf_instance', STATE.sfInstance);
-    await fetchSFUser();
-    onSFConnected();
-  } else {
-    showStatus('sf-status', '❌ ' + (data.error_description || JSON.stringify(data)), 'fail');
-  }
 }
 
 async function fetchSFUser() {
