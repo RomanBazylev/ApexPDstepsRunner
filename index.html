@@ -384,9 +384,11 @@
           <label>Session ID / Access Token</label>
           <input id="sf-manual-token" type="password" placeholder="00D..." autocomplete="off">
         </div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:12px">
-          F12 → Console → <code style="user-select:all">document.cookie.match(/sid=([^;]+)/)?.[1]</code><br>
-          or: <code>sf org display --target-org alias</code>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.8">
+          <strong>Как получить токен:</strong><br>
+          1. Salesforce → Developer Console → <strong>Debug → Execute Anonymous</strong> (Ctrl+E)<br>
+          2. Вставьте: <code style="user-select:all;background:var(--surface2);padding:2px 6px;border-radius:4px">System.debug(UserInfo.getSessionId());</code><br>
+          3. Execute → в логе нажмите <strong>Debug Only</strong> → скопируйте Session ID
         </div>
         <div id="sf-status" class="mt8"></div>
         <div class="mt8">
