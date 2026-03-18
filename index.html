@@ -367,23 +367,56 @@
     <!-- Main connect card -->
     <div class="card">
       <div class="card-title"><span>SF</span>Connect to Salesforce</div>
-      <div class="grid2">
+
+      <!-- Method tabs -->
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <button class="btn btn-sm" id="sf-tab-token" onclick="switchSFTab('token')" style="background:var(--accent);color:#fff">🔑 Session ID / Token</button>
+        <button class="btn btn-sm" id="sf-tab-oauth" onclick="switchSFTab('oauth')" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border)">🔒 OAuth (Connected App)</button>
+      </div>
+
+      <!-- Token tab -->
+      <div id="sf-method-token">
         <div class="field">
           <label>Instance URL</label>
           <input id="sf-instance" placeholder="https://yourcompany.my.salesforce.com" value="">
         </div>
         <div class="field">
-          <label>Consumer Key</label>
-          <input id="sf-client-id" placeholder="3MVG9..." value="">
+          <label>Session ID / Access Token</label>
+          <input id="sf-manual-token" type="password" placeholder="00D..." autocomplete="off">
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:12px">
+          F12 → Console → <code style="user-select:all">document.cookie.match(/sid=([^;]+)/)?.[1]</code><br>
+          or: <code>sf org display --target-org alias</code>
+        </div>
+        <div id="sf-status" class="mt8"></div>
+        <div class="mt8">
+          <button class="btn btn-sf" id="sf-btn" onclick="connectSF()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+            Подключиться
+          </button>
         </div>
       </div>
-      <div id="sf-status" class="mt8"></div>
-      <div class="mt8 flex gap8" style="align-items:center">
-        <button class="btn btn-sf" id="sf-btn" onclick="connectSF()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
-          Login with Salesforce SSO
-        </button>
-        <span class="text-muted">→ откроет страницу логина Salesforce</span>
+
+      <!-- OAuth tab -->
+      <div id="sf-method-oauth" style="display:none">
+        <div class="grid2">
+          <div class="field">
+            <label>Instance URL</label>
+            <input id="sf-instance-oauth" placeholder="https://yourcompany.my.salesforce.com" value="">
+          </div>
+          <div class="field">
+            <label>Consumer Key</label>
+            <input id="sf-client-id" placeholder="3MVG9..." value="">
+          </div>
+        </div>
+        <div id="sf-status-oauth" class="mt8"></div>
+        <div class="mt8 flex gap8" style="align-items:center">
+          <button class="btn btn-sf" id="sf-btn-oauth" onclick="connectSFOAuth()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+            Login with Salesforce SSO
+          </button>
+          <span class="text-muted">→ откроет страницу логина Salesforce</span>
+        </div>
       </div>
     </div>
 
@@ -837,7 +870,10 @@ function init() {
 
   // Restore saved SF instance
   const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-  if (saved.sfInstance)  document.getElementById('sf-instance').value  = saved.sfInstance;
+  if (saved.sfInstance) {
+    document.getElementById('sf-instance').value       = saved.sfInstance;
+    document.getElementById('sf-instance-oauth').value = saved.sfInstance;
+  }
   if (saved.sfClientId)  document.getElementById('sf-client-id').value = saved.sfClientId;
   if (saved.scriptsPath) document.getElementById('scripts-path').value = saved.scriptsPath;
   if (saved.fileExts)    document.getElementById('file-exts').value    = saved.fileExts;
@@ -879,9 +915,10 @@ function init() {
 }
 
 function saveConfig() {
+  const inst = document.getElementById('sf-instance').value || document.getElementById('sf-instance-oauth').value;
   localStorage.setItem(STORAGE_KEY, JSON.stringify({
     sfClientId:  document.getElementById('sf-client-id').value,
-    sfInstance:  document.getElementById('sf-instance').value,
+    sfInstance:  inst,
     scriptsPath: document.getElementById('scripts-path').value,
     fileExts:    document.getElementById('file-exts').value,
   }));
@@ -890,16 +927,60 @@ function saveConfig() {
 function ghTab() {} // stub — больше не нужен
 
 // ══════════════════════════════════════════
-// SALESFORCE AUTH — Implicit (User-Agent) Flow
+// SALESFORCE AUTH
 // ══════════════════════════════════════════
+function switchSFTab(tab) {
+  const isToken = tab === 'token';
+  document.getElementById('sf-method-token').style.display = isToken ? '' : 'none';
+  document.getElementById('sf-method-oauth').style.display = isToken ? 'none' : '';
+  document.getElementById('sf-tab-token').style.background = isToken ? 'var(--accent)' : 'var(--surface2)';
+  document.getElementById('sf-tab-token').style.color      = isToken ? '#fff' : 'var(--muted)';
+  document.getElementById('sf-tab-oauth').style.background = isToken ? 'var(--surface2)' : 'var(--accent)';
+  document.getElementById('sf-tab-oauth').style.color      = isToken ? 'var(--muted)' : '#fff';
+  // Sync instance URL between tabs
+  const src = isToken ? 'sf-instance-oauth' : 'sf-instance';
+  const dst = isToken ? 'sf-instance' : 'sf-instance-oauth';
+  if (document.getElementById(src).value && !document.getElementById(dst).value) {
+    document.getElementById(dst).value = document.getElementById(src).value;
+  }
+}
+
+// Method 1: Manual token paste
 async function connectSF() {
   saveConfig();
-  const clientId = document.getElementById('sf-client-id').value.trim();
   const instance = document.getElementById('sf-instance').value.trim().replace(/\/$/, '');
-  if (!instance) { alert('Введите Instance URL вашей org (например: https://mycompany.my.salesforce.com)'); return; }
-  if (!clientId) { alert('Введите Consumer Key из вашего Connected App. Инструкция — в блоке "One-time setup" выше.'); return; }
+  const token    = document.getElementById('sf-manual-token').value.trim();
+  if (!instance) { alert('Введите Instance URL вашей org'); return; }
+  if (!token) { alert('Вставьте Session ID / Access Token'); return; }
 
-  // Save instance so we can read it back after redirect
+  STATE.sfToken    = token;
+  STATE.sfInstance = instance;
+  sessionStorage.setItem('sf_token', token);
+  sessionStorage.setItem('sf_instance', instance);
+
+  showStatus('sf-status', '⏳ Проверяю токен…', 'warn');
+  try {
+    await fetchSFUser();
+    if (STATE.sfUser) {
+      onSFConnected();
+    } else {
+      showStatus('sf-status', '❌ Токен не работает — проверьте Instance URL и токен', 'fail');
+      STATE.sfToken = null;
+    }
+  } catch(e) {
+    showStatus('sf-status', '❌ Ошибка: ' + e.message, 'fail');
+    STATE.sfToken = null;
+  }
+}
+
+// Method 2: OAuth Implicit flow (requires Connected App)
+async function connectSFOAuth() {
+  saveConfig();
+  const clientId = document.getElementById('sf-client-id').value.trim();
+  const instance = document.getElementById('sf-instance-oauth').value.trim().replace(/\/$/, '');
+  if (!instance) { alert('Введите Instance URL вашей org'); return; }
+  if (!clientId) { alert('Введите Consumer Key из Connected App'); return; }
+
   sessionStorage.setItem('sf_instance_pending', instance);
 
   const redirect = location.origin + location.pathname;
