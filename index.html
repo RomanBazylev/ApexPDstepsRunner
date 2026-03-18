@@ -1350,17 +1350,27 @@ async function handleZipFile(file) {
 
 function filterZipFolders() { renderZipFolders(); }
 
+// Detect common prefix in ZIP (GitHub ZIPs have "repo-branch/" prefix)
+function detectZipPrefix() {
+  const paths = Object.keys(zipFiles);
+  if (paths.length === 0) return '';
+  const first = paths[0].split('/')[0];
+  // If ALL paths share the same first segment, treat it as a prefix to strip
+  const allMatch = paths.every(p => p.startsWith(first + '/'));
+  return allMatch ? first + '/' : '';
+}
+
 function renderZipFolders() {
   const basePath = document.getElementById('zip-base-path').value.trim();
   const exts     = CONFIG.DEFAULT_EXTS.split(',').map(e => e.trim().toLowerCase());
   const list     = document.getElementById('zip-folder-list');
+  const prefix   = detectZipPrefix();
 
   // Group files by folder relative to basePath
   const groups = {};
   for (const path of Object.keys(zipFiles)) {
-    // Strip leading folder (GitHub ZIP adds repo-branch/ prefix)
-    const parts     = path.split('/');
-    const stripped  = parts.slice(1).join('/'); // remove "repo-main/" prefix
+    // Strip detected prefix (e.g. "repo-main/")
+    const stripped = prefix ? path.slice(prefix.length) : path;
     if (basePath && !stripped.startsWith(basePath)) continue;
 
     const rel    = basePath ? stripped.slice(basePath.length).replace(/^\//, '') : stripped;
