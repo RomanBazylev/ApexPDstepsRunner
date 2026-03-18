@@ -327,128 +327,111 @@
   <!-- SECTION 1: CONNECT -->
   <div id="section-connect">
 
-    <!-- One-time setup instructions -->
-    <div class="card" style="border-color:rgba(251,191,36,0.2);margin-bottom:20px">
-      <div class="card-title"><span>⚙️</span>One-time setup (2 min)</div>
-      <details id="setup-details">
-        <summary style="cursor:pointer;font-size:13px;color:var(--text);margin-bottom:12px">
-          <strong>Create a Connected App in Salesforce</strong> <span style="color:var(--muted);font-size:12px">— only needs to be done once per org</span>
-        </summary>
-        <div class="grid2">
-          <div>
-            <div class="card-title" style="margin-bottom:8px"><span>SF</span>Connected App</div>
-            <ol style="padding-left:20px;line-height:2;font-size:12px;color:var(--muted)">
-              <li>Setup → App Manager → <strong style="color:var(--text)">New Connected App</strong></li>
-              <li>Enable OAuth Settings ✓</li>
-              <li>Callback URL: <code id="sf-callback-display"></code></li>
-              <li>Selected OAuth Scopes: <code>api</code>, <code>refresh_token</code></li>
-              <li>No secret required, PKCE optional</li>
-              <li>Save → wait 2–10 min → copy <strong style="color:var(--text)">Consumer Key</strong></li>
-            </ol>
-          </div>
-          <div>
-            <div class="card-title" style="margin-bottom:8px"><span>GH</span>GitHub token</div>
-            <ol style="padding-left:20px;line-height:2;font-size:12px;color:var(--muted)">
-              <li>github.com → Settings → Developer settings</li>
-              <li>Personal access tokens → Fine-grained tokens</li>
-              <li>Contents permission: <code>Read-only</code></li>
-              <li>If org uses SAML SSO:<br><strong style="color:var(--text)">Configure SSO → Authorize</strong></li>
-              <li>Paste token in GitHub tab on step 2</li>
-            </ol>
-          </div>
-        </div>
-      </details>
-      <div class="field" style="margin-top:4px">
-        <label>GitHub PAT (if not pre-configured)</label>
-        <input id="gh-pat-advanced" type="password" placeholder="ghp_..." autocomplete="off">
-      </div>
-    </div>
-
     <!-- Main connect card -->
     <div class="card">
       <div class="card-title"><span>SF</span>Connect to Salesforce</div>
 
-      <!-- Method tabs -->
-      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-        <button class="btn btn-sm" id="sf-tab-login" onclick="switchSFTab('login')" style="background:var(--accent);color:#fff">👤 Username + Password</button>
-        <button class="btn btn-sm" id="sf-tab-token" onclick="switchSFTab('token')" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border)">🔑 Session ID</button>
-        <button class="btn btn-sm" id="sf-tab-oauth" onclick="switchSFTab('oauth')" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border)">🔒 OAuth</button>
+      <!-- Connected state (hidden by default) -->
+      <div id="sf-connected-state" style="display:none">
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--green-dim);border:1px solid rgba(61,214,140,0.2);border-radius:8px">
+          <span style="color:var(--green);font-size:18px">✓</span>
+          <div style="flex:1">
+            <div style="font-size:13px;color:var(--green);font-weight:500" id="sf-connected-label">Подключено</div>
+            <div style="font-size:11px;color:var(--muted)" id="sf-connected-instance"></div>
+          </div>
+          <button class="btn btn-sm btn-danger" onclick="disconnectSF()">Отключиться</button>
+        </div>
       </div>
 
-      <!-- Login tab (SOAP) -->
-      <div id="sf-method-login">
-        <div class="field">
-          <label>Instance URL</label>
-          <input id="sf-instance" placeholder="https://yourcompany.my.salesforce.com" value="">
+      <!-- Login form (shown when not connected) -->
+      <div id="sf-login-form">
+        <!-- Method tabs: Session ID first (most common for SSO users) -->
+        <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+          <button class="btn btn-sm" id="sf-tab-token" onclick="switchSFTab('token')" style="background:var(--accent);color:#fff">🔑 Session ID (SSO)</button>
+          <button class="btn btn-sm" id="sf-tab-login" onclick="switchSFTab('login')" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border)">👤 Логин + Пароль</button>
+          <button class="btn btn-sm" id="sf-tab-oauth" onclick="switchSFTab('oauth')" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border)">🔒 OAuth</button>
         </div>
-        <div class="grid2">
+
+        <!-- Token tab (default — best for SSO) -->
+        <div id="sf-method-token">
           <div class="field">
-            <label>Username</label>
-            <input id="sf-username" placeholder="user@company.com" autocomplete="username">
+            <label>Instance URL <span style="color:var(--muted);font-weight:normal">(из адресной строки до .com)</span></label>
+            <input id="sf-instance-token" placeholder="https://yourcompany.my.salesforce.com" value="">
           </div>
           <div class="field">
-            <label>Password + Security Token</label>
-            <input id="sf-password" type="password" placeholder="password + token" autocomplete="current-password">
+            <label>Session ID</label>
+            <input id="sf-manual-token" type="password" placeholder="00D..." autocomplete="off">
+          </div>
+          <details style="margin-bottom:12px">
+            <summary style="font-size:11px;color:var(--muted);cursor:pointer">📖 Как получить Session ID</summary>
+            <div style="font-size:11px;color:var(--muted);line-height:1.9;background:var(--surface2);padding:12px;border-radius:8px;margin-top:6px">
+              1. Откройте Salesforce в браузере (залогиньтесь через SSO)<br>
+              2. <strong>F12</strong> → вкладка <strong>Network</strong> → перезагрузите страницу (F5)<br>
+              3. Кликните на любой запрос → <strong>Headers</strong> → найдите <strong>Cookie</strong><br>
+              4. Скопируйте значение после <code style="background:var(--surface);padding:1px 5px;border-radius:3px">sid=</code> до ближайшей <code>;</code>
+            </div>
+          </details>
+          <div id="sf-status-token" class="mt8"></div>
+          <div class="mt8">
+            <button class="btn btn-sf" id="sf-btn-token" onclick="connectSFToken()">Подключиться</button>
           </div>
         </div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.7">
-          Security Token: <strong>Settings → Reset My Security Token</strong> → придёт на email.<br>
-          Вставьте пароль и токен слитно: <code>myPassword123ABCsecurityToken</code>
-        </div>
-        <div id="sf-status" class="mt8"></div>
-        <div class="mt8">
-          <button class="btn btn-sf" id="sf-btn" onclick="connectSFLogin()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
-            Войти
-          </button>
-        </div>
-      </div>
 
-      <!-- Token tab -->
-      <div id="sf-method-token" style="display:none">
-        <div class="field">
-          <label>Instance URL <span style="color:var(--muted);font-weight:normal">(скопируйте из адресной строки до .com)</span></label>
-          <input id="sf-instance-token" placeholder="https://yourcompany.my.salesforce.com" value="">
-        </div>
-        <div class="field">
-          <label>Session ID</label>
-          <input id="sf-manual-token" type="password" placeholder="00D..." autocomplete="off">
-        </div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.9;background:var(--surface2);padding:12px;border-radius:8px">
-          <strong style="color:var(--text)">Как получить Session ID (для SSO):</strong><br>
-          1. Откройте Salesforce в браузере (залогиньтесь)<br>
-          2. <strong>F12</strong> → вкладка <strong>Network</strong> → перезагрузите страницу (F5)<br>
-          3. Кликните на любой запрос → <strong>Headers</strong> → найдите <strong>Cookie</strong><br>
-          4. Скопируйте значение после <code style="background:var(--surface);padding:1px 5px;border-radius:3px">sid=</code> до ближайшей <code>;</code>
-        </div>
-        <div id="sf-status-token" class="mt8"></div>
-        <div class="mt8">
-          <button class="btn btn-sf" id="sf-btn-token" onclick="connectSFToken()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
-            Подключиться
-          </button>
-        </div>
-      </div>
-
-      <!-- OAuth tab -->
-      <div id="sf-method-oauth" style="display:none">
-        <div class="grid2">
+        <!-- Login tab (SOAP) -->
+        <div id="sf-method-login" style="display:none">
           <div class="field">
             <label>Instance URL</label>
-            <input id="sf-instance-oauth" placeholder="https://yourcompany.my.salesforce.com" value="">
+            <input id="sf-instance" placeholder="https://yourcompany.my.salesforce.com" value="">
           </div>
-          <div class="field">
-            <label>Consumer Key</label>
-            <input id="sf-client-id" placeholder="3MVG9..." value="">
+          <div class="grid2">
+            <div class="field">
+              <label>Username</label>
+              <input id="sf-username" placeholder="user@company.com" autocomplete="username">
+            </div>
+            <div class="field">
+              <label>Password + Security Token</label>
+              <input id="sf-password" type="password" placeholder="passwordSecurityToken" autocomplete="current-password">
+            </div>
+          </div>
+          <details style="margin-bottom:12px">
+            <summary style="font-size:11px;color:var(--muted);cursor:pointer">📖 Где взять Security Token</summary>
+            <div style="font-size:11px;color:var(--muted);line-height:1.9;background:var(--surface2);padding:12px;border-radius:8px;margin-top:6px">
+              <strong>Settings → Reset My Security Token</strong> → придёт на email.<br>
+              Вставьте пароль и токен слитно: <code>myPassword123ABCtoken</code><br>
+              <strong>Не работает с SSO</strong> — используйте Session ID.
+            </div>
+          </details>
+          <div id="sf-status" class="mt8"></div>
+          <div class="mt8">
+            <button class="btn btn-sf" id="sf-btn" onclick="connectSFLogin()">Войти</button>
           </div>
         </div>
-        <div id="sf-status-oauth" class="mt8"></div>
-        <div class="mt8 flex gap8" style="align-items:center">
-          <button class="btn btn-sf" id="sf-btn-oauth" onclick="connectSFOAuth()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
-            Login with Salesforce SSO
-          </button>
-          <span class="text-muted">→ требуется Connected App</span>
+
+        <!-- OAuth tab -->
+        <div id="sf-method-oauth" style="display:none">
+          <div class="grid2">
+            <div class="field">
+              <label>Instance URL</label>
+              <input id="sf-instance-oauth" placeholder="https://yourcompany.my.salesforce.com" value="">
+            </div>
+            <div class="field">
+              <label>Consumer Key</label>
+              <input id="sf-client-id" placeholder="3MVG9..." value="">
+            </div>
+          </div>
+          <details style="margin-bottom:12px">
+            <summary style="font-size:11px;color:var(--muted);cursor:pointer">📖 Как создать Connected App</summary>
+            <div style="font-size:11px;color:var(--muted);line-height:1.9;background:var(--surface2);padding:12px;border-radius:8px;margin-top:6px">
+              1. Setup → App Manager → <strong>New Connected App</strong><br>
+              2. Callback URL: <code id="sf-callback-display"></code><br>
+              3. Scopes: <code>api</code>, <code>refresh_token</code><br>
+              4. Save → подождите 2-10 мин → скопируйте Consumer Key
+            </div>
+          </details>
+          <div id="sf-status-oauth" class="mt8"></div>
+          <div class="mt8">
+            <button class="btn btn-sf" id="sf-btn-oauth" onclick="connectSFOAuth()">Login with SSO</button>
+          </div>
         </div>
       </div>
     </div>
@@ -1099,24 +1082,31 @@ async function fetchSFUser() {
 
 function onSFConnected(silent) {
   const user = STATE.sfUser || 'connected';
-  const msg  = `✓ Вы вошли как ${user}`;
-  // Update status on ALL tabs
-  ['sf-status', 'sf-status-token', 'sf-status-oauth'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) showStatus(id, msg, 'pass');
-  });
-  // Disable buttons on ALL tabs
-  ['sf-btn', 'sf-btn-token', 'sf-btn-oauth'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) { el.innerHTML = '✓ Подключено'; el.disabled = true; }
-  });
   const inst = (STATE.sfInstance||'').replace(/https?:\/\//,'').split('/')[0];
+  // Show connected state, hide login form
+  document.getElementById('sf-connected-state').style.display = '';
+  document.getElementById('sf-login-form').style.display = 'none';
+  document.getElementById('sf-connected-label').textContent = `Подключено как ${user}`;
+  document.getElementById('sf-connected-instance').textContent = inst;
   updateHeaderBadge('sf', inst);
   if (!silent) {
     setTimeout(() => maybeAutoAdvance(), 400);
   } else {
     checkBothConnected();
   }
+}
+
+function disconnectSF() {
+  STATE.sfToken = null;
+  STATE.sfInstance = null;
+  STATE.sfUser = null;
+  sessionStorage.removeItem('sf_token');
+  sessionStorage.removeItem('sf_instance');
+  sessionStorage.removeItem('sf_user');
+  // Show login form, hide connected state
+  document.getElementById('sf-connected-state').style.display = 'none';
+  document.getElementById('sf-login-form').style.display = '';
+  updateHeaderBadge('sf', null);
 }
 
 // ══════════════════════════════════════════
@@ -1979,10 +1969,10 @@ function updateHeaderBadge(type, label) {
   const container = document.getElementById('header-badges');
   const id = 'badge-' + type;
   let el = document.getElementById(id);
+  if (!label) { if (el) el.remove(); return; }
   if (!el) { el = document.createElement('div'); el.id = id; container.appendChild(el); }
-  const cls = type === 'sf' ? 'badge badge-connected' : 'badge badge-connected';
-  el.className = cls;
-  el.innerHTML = `<span class="dot"></span>${label}`;
+  el.className = 'badge badge-connected';
+  el.innerHTML = `<span class="dot"></span>${escHtml(label)}`;
 }
 
 function toggleSetup() {
