@@ -1,0 +1,1807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Apex Runner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --surface2: #1c1c27;
+    --border: rgba(255,255,255,0.07);
+    --border-bright: rgba(255,255,255,0.15);
+    --text: #e8e8f0;
+    --muted: #6b6b80;
+    --sf: #00a1e0;
+    --sf-dim: rgba(0,161,224,0.12);
+    --gh: #f0f6ff;
+    --gh-dim: rgba(240,246,255,0.08);
+    --green: #3dd68c;
+    --green-dim: rgba(61,214,140,0.1);
+    --red: #f87171;
+    --red-dim: rgba(248,113,113,0.1);
+    --amber: #fbbf24;
+    --amber-dim: rgba(251,191,36,0.1);
+    --accent: #7c6af7;
+    --accent-dim: rgba(124,106,247,0.15);
+    --mono: 'Space Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+    --radius: 10px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 14px; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* ── LAYOUT ── */
+  .app { display: flex; flex-direction: column; min-height: 100vh; }
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 32px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(10,10,15,0.8);
+    backdrop-filter: blur(12px);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo { font-family: var(--mono); font-size: 15px; letter-spacing: -0.5px; }
+  .logo span { color: var(--accent); }
+  .badges { display: flex; gap: 8px; }
+  main { flex: 1; padding: 40px 32px; max-width: 900px; margin: 0 auto; width: 100%; }
+
+  /* ── STEPS ── */
+  .steps { display: flex; gap: 0; margin-bottom: 40px; }
+  .step {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; font-family: var(--mono);
+    color: var(--muted); padding: 6px 14px 6px 0;
+    border-bottom: 2px solid var(--border);
+    flex: 1; transition: all 0.2s;
+  }
+  .step.active { color: var(--text); border-bottom-color: var(--accent); }
+  .step.done { color: var(--green); border-bottom-color: var(--green); }
+  .step-num {
+    width: 22px; height: 22px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--surface2); font-size: 11px; flex-shrink: 0;
+    transition: all 0.2s;
+  }
+  .step.active .step-num { background: var(--accent); color: #fff; }
+  .step.done .step-num { background: var(--green); color: #000; }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    margin-bottom: 20px;
+  }
+  .card-title {
+    font-family: var(--mono); font-size: 11px;
+    text-transform: uppercase; letter-spacing: 1.5px;
+    color: var(--muted); margin-bottom: 20px;
+  }
+  .card-title span { color: var(--accent); margin-right: 8px; }
+
+  /* ── BUTTONS ── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 20px; border-radius: 8px; border: none;
+    font-family: var(--sans); font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: all 0.15s; text-decoration: none;
+  }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-sf { background: var(--sf-dim); color: var(--sf); border: 1px solid rgba(0,161,224,0.25); }
+  .btn-sf:hover:not(:disabled) { background: rgba(0,161,224,0.2); }
+  .btn-gh { background: var(--gh-dim); color: var(--gh); border: 1px solid rgba(240,246,255,0.15); }
+  .btn-gh:hover:not(:disabled) { background: rgba(240,246,255,0.14); }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover:not(:disabled) { background: #6a59e8; }
+  .btn-danger { background: var(--red-dim); color: var(--red); border: 1px solid rgba(248,113,113,0.2); }
+  .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+  /* ── BADGE ── */
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 20px; font-size: 12px;
+  }
+  .badge-sf { background: var(--sf-dim); color: var(--sf); border: 1px solid rgba(0,161,224,0.2); }
+  .badge-gh { background: var(--gh-dim); color: var(--gh); border: 1px solid rgba(240,246,255,0.12); }
+  .badge-connected { background: var(--green-dim); color: var(--green); border: 1px solid rgba(61,214,140,0.2); }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  /* ── FORM ── */
+  .field { margin-bottom: 16px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; font-family: var(--mono); }
+  input, select {
+    width: 100%; padding: 10px 14px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text);
+    font-family: var(--sans); font-size: 13px;
+    transition: border-color 0.15s; outline: none;
+  }
+  input:focus, select:focus { border-color: var(--accent); }
+  select option { background: var(--surface2); }
+
+  /* ── FILE TREE ── */
+  .file-tree { display: flex; flex-direction: column; gap: 4px; }
+  .folder-item {
+    border: 1px solid var(--border);
+    border-radius: 8px; overflow: hidden;
+  }
+  .folder-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px; cursor: pointer;
+    background: var(--surface2);
+    transition: background 0.15s;
+  }
+  .folder-header:hover { background: rgba(124,106,247,0.08); }
+  .folder-header input[type=checkbox] { accent-color: var(--accent); width: 15px; height: 15px; }
+  .folder-name { font-family: var(--mono); font-size: 12px; flex: 1; }
+  .folder-count { font-size: 11px; color: var(--muted); }
+  .folder-scripts { padding: 8px 14px 10px 38px; display: flex; flex-direction: column; gap: 4px; }
+  .script-item {
+    display: flex; align-items: center; gap: 8px;
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+    padding: 3px 0;
+  }
+  .script-item input[type=checkbox] { accent-color: var(--accent); }
+
+  /* ── RUN RESULTS ── */
+  .run-log {
+    background: var(--surface2); border-radius: 8px;
+    border: 1px solid var(--border);
+    max-height: 420px; overflow-y: auto;
+  }
+  .log-line {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px; animation: fadeIn 0.2s ease;
+  }
+  .log-line:last-child { border-bottom: none; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  .log-status { flex-shrink: 0; margin-top: 1px; }
+  .log-info { flex: 1; }
+  .log-script { font-family: var(--mono); margin-bottom: 2px; }
+  .log-output {
+    color: var(--muted); font-family: var(--mono); font-size: 10px;
+    white-space: pre-wrap; max-height: 80px; overflow: hidden;
+    cursor: pointer;
+  }
+  .log-output.expanded { max-height: none; }
+  .log-time { color: var(--muted); font-family: var(--mono); font-size: 10px; flex-shrink: 0; }
+  .status-pass { color: var(--green); }
+  .status-fail { color: var(--red); }
+  .status-running { color: var(--amber); }
+
+  /* ── SUMMARY ── */
+  .summary {
+    display: flex; gap: 12px; flex-wrap: wrap;
+    padding: 16px 0; margin-bottom: 16px;
+  }
+  .summary-stat {
+    flex: 1; min-width: 100px; padding: 14px;
+    border-radius: 8px; text-align: center;
+  }
+  .summary-stat .num { font-family: var(--mono); font-size: 28px; font-weight: 700; }
+  .summary-stat .lbl { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .stat-pass { background: var(--green-dim); }
+  .stat-pass .num { color: var(--green); }
+  .stat-fail { background: var(--red-dim); }
+  .stat-fail .num { color: var(--red); }
+  .stat-total { background: var(--accent-dim); }
+  .stat-total .num { color: var(--accent); }
+
+  /* ── SETUP NOTE ── */
+  .setup-note {
+    background: var(--amber-dim); border: 1px solid rgba(251,191,36,0.2);
+    border-radius: 8px; padding: 16px 20px; margin-bottom: 20px;
+    font-size: 12px; color: var(--amber); line-height: 1.7;
+  }
+  .setup-note code {
+    background: rgba(251,191,36,0.15); padding: 1px 6px;
+    border-radius: 4px; font-family: var(--mono); font-size: 11px;
+  }
+
+  /* ── PROGRESS ── */
+  .progress-bar { height: 3px; background: var(--border); border-radius: 2px; margin-bottom: 16px; }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s; }
+
+  /* ── EMPTY STATE ── */
+  .empty { text-align: center; padding: 40px; color: var(--muted); }
+  .empty-icon { font-size: 36px; margin-bottom: 12px; opacity: 0.4; }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 3px; }
+
+  /* grid 2-col */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media(max-width: 600px) { .grid2 { grid-template-columns: 1fr; } main { padding: 20px 16px; } header { padding: 12px 16px; } }
+
+  /* ── NAV TABS ── */
+  .nav-tabs { display: flex; gap: 4px; }
+  .nav-tab {
+    padding: 6px 14px; border-radius: 6px; font-size: 12px;
+    font-family: var(--mono); cursor: pointer; border: none;
+    background: transparent; color: var(--muted); transition: all 0.15s;
+  }
+  .nav-tab:hover { color: var(--text); background: var(--surface2); }
+  .nav-tab.active { background: var(--accent-dim); color: var(--accent); }
+
+  /* ── DOCS ── */
+  .docs-body { line-height: 1.8; font-size: 13px; color: var(--text); }
+  .docs-body h2 { font-family: var(--mono); font-size: 14px; color: var(--accent); margin: 32px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  .docs-body h2:first-child { margin-top: 0; }
+  .docs-body h3 { font-size: 13px; font-weight: 500; color: var(--text); margin: 20px 0 8px; }
+  .docs-body p { color: var(--muted); margin-bottom: 10px; }
+  .docs-body ul, .docs-body ol { padding-left: 20px; color: var(--muted); margin-bottom: 12px; }
+  .docs-body li { margin-bottom: 4px; }
+  .docs-body code { background: var(--surface2); padding: 1px 6px; border-radius: 4px; font-family: var(--mono); font-size: 11px; color: var(--text); }
+  .docs-body pre { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 16px; font-family: var(--mono); font-size: 11px; overflow-x: auto; margin: 12px 0; line-height: 1.7; }
+  .docs-body strong { color: var(--text); font-weight: 500; }
+  .docs-body a { color: var(--accent); text-decoration: none; }
+  .docs-body a:hover { text-decoration: underline; }
+  .docs-callout { border-radius: 8px; padding: 14px 18px; margin: 16px 0; font-size: 12px; line-height: 1.7; }
+  .docs-callout.info  { background: var(--accent-dim); border: 1px solid rgba(124,106,247,0.2); color: var(--text); }
+  .docs-callout.warn  { background: var(--amber-dim);  border: 1px solid rgba(251,191,36,0.2);  color: var(--amber); }
+  .docs-callout.good  { background: var(--green-dim);  border: 1px solid rgba(61,214,140,0.2);  color: var(--green); }
+  .docs-table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 12px; }
+  .docs-table th { text-align: left; padding: 8px 12px; background: var(--surface2); color: var(--muted); font-weight: 500; font-family: var(--mono); font-size: 11px; }
+  .docs-table td { padding: 8px 12px; border-top: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+  .docs-table td strong { color: var(--text); }
+  .docs-toc { display: flex; flex-direction: column; gap: 4px; padding: 16px; background: var(--surface2); border-radius: 8px; margin-bottom: 24px; }
+  .docs-toc a { font-size: 12px; color: var(--muted); text-decoration: none; padding: 2px 0; }
+  .docs-toc a:hover { color: var(--accent); }
+
+</head>
+<body>
+<div class="app">
+
+<header>
+  <div class="logo">apex<span>.</span>runner</div>
+  <nav class="nav-tabs">
+    <button class="nav-tab active" id="nav-app" onclick="navTo('app')">App</button>
+    <button class="nav-tab" id="nav-report" onclick="navTo('report')">Report <span id="nav-report-badge" style="display:none;background:var(--red);color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;margin-left:4px"></span></button>
+    <button class="nav-tab" id="nav-docs" onclick="navTo('docs')">Docs</button>
+  </nav>
+  <div class="badges" id="header-badges"></div>
+</header>
+
+<main>
+
+<!-- APP VIEW -->
+<div id="view-app">
+  <!-- STEP INDICATOR -->
+  <div class="steps" id="steps">
+    <div class="step active" id="step-1"><div class="step-num">1</div> Connect</div>
+    <div class="step" id="step-2"><div class="step-num">2</div> Select scripts</div>
+    <div class="step" id="step-3"><div class="step-num">3</div> Run</div>
+  </div>
+
+  <!-- SECTION 1: CONNECT -->
+  <div id="section-connect">
+
+    <div class="setup-note" id="setup-note" style="background:var(--green-dim);border-color:rgba(61,214,140,0.2);color:var(--green)">
+      <strong>✅ No Connected App setup required</strong> — uses the public Salesforce CLI OAuth app (PlatformCLI).<br>
+      All you need: your org's Instance URL. GitHub token is pre-configured or entered once per device.
+      <a href="#" onclick="toggleSetup();return false" style="color:var(--green);margin-left:8px">Advanced settings ▾</a>
+    </div>
+
+    <div id="setup-details" style="display:none">
+      <div class="card" style="border-color:rgba(251,191,36,0.2)">
+        <div class="card-title"><span>⚙️</span>Advanced settings (optional)</div>
+        <div class="grid2">
+          <div>
+            <div class="card-title" style="margin-bottom:8px"><span>SF</span>Custom Connected App</div>
+            <ol style="padding-left:20px;line-height:2;font-size:12px;color:var(--muted)">
+              <li>Setup → App Manager → New Connected App</li>
+              <li>Callback URL: <code id="sf-callback-display"></code></li>
+              <li>Scopes: <code>api</code>, <code>refresh_token</code></li>
+              <li>Enable <strong>PKCE</strong>, no secret required</li>
+              <li>Copy Consumer Key → paste below</li>
+            </ol>
+          </div>
+          <div>
+            <div class="card-title" style="margin-bottom:8px"><span>GH</span>GitHub token</div>
+            <ol style="padding-left:20px;line-height:2;font-size:12px;color:var(--muted)">
+              <li>github.com → Settings → Developer settings</li>
+              <li>Personal access tokens → Fine-grained tokens</li>
+              <li>Contents permission: <code>Read-only</code></li>
+              <li>If org uses SAML SSO:<br><strong style="color:var(--text)">Configure SSO → Authorize</strong></li>
+              <li>Paste token in GitHub tab on step 2</li>
+            </ol>
+          </div>
+        </div>
+        <hr class="divider">
+        <div class="grid2">
+          <div class="field">
+            <label>Consumer Key (custom Connected App only)</label>
+            <input id="sf-client-id" placeholder="Leave empty to use PlatformCLI" value="">
+          </div>
+          <div class="field">
+            <label>GitHub PAT (if not pre-configured)</label>
+            <input id="gh-pat-advanced" type="password" placeholder="ghp_..." autocomplete="off">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main connect card -->
+    <div class="card">
+      <div class="card-title"><span>SF</span>Connect to Salesforce</div>
+      <div class="field">
+        <label>Instance URL</label>
+        <input id="sf-instance" placeholder="https://yourcompany.my.salesforce.com" value="">
+      </div>
+      <div id="sf-status" class="mt8"></div>
+      <div class="mt8 flex gap8" style="align-items:center">
+        <button class="btn btn-sf" id="sf-btn" onclick="connectSF()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+          Login with Salesforce SSO
+        </button>
+        <span class="text-muted">→ opens your standard Salesforce login page</span>
+      </div>
+    </div>
+
+    <!-- hidden GH fields still needed for OAuth fallback -->
+    <input type="hidden" id="gh-client-id" value="">
+    <input type="hidden" id="gh-proxy" value="">
+    <div style="display:none" id="gh-tab-pat"></div>
+    <div style="display:none" id="gh-tab-oauth"></div>
+    <div style="display:none" id="gh-mode-pat"></div>
+    <div style="display:none" id="gh-mode-oauth"></div>
+    <div style="display:none" id="gh-status"></div>
+    <div style="display:none" id="gh-btn"></div>
+
+    <div class="flex flex-end mt8" id="connect-next-wrap" style="display:none!important">
+      <button class="btn btn-primary" onclick="goToStep2()">Выбрать скрипты →</button>
+    </div>
+  </div>
+
+  <!-- SECTION 2: SELECT SCRIPTS -->
+  <div id="section-select" style="display:none">
+
+    <!-- Source selector tabs -->
+    <div class="card" style="padding:20px">
+      <div class="card-title"><span>02</span>Источник скриптов</div>
+      <div style="display:flex;gap:12px">
+
+        <div id="tab-zip" onclick="switchSource('zip')" style="flex:1;padding:16px;border-radius:8px;border:2px solid var(--accent);background:var(--accent-dim);cursor:pointer;transition:all 0.15s">
+          <div style="font-family:var(--mono);font-size:13px;color:var(--accent);margin-bottom:6px">📦 ZIP архив</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.6">Скачайте репо как архив из GitHub и загрузите сюда. Работает без токена.</div>
+        </div>
+
+        <div id="tab-git" onclick="switchSource('git')" style="flex:1;padding:16px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;transition:all 0.15s">
+          <div style="font-family:var(--mono);font-size:13px;color:var(--muted);margin-bottom:6px">🔗 GitHub репо</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.6">Читает скрипты напрямую из репо. Нужен GitHub токен.</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ZIP MODE -->
+    <div id="source-zip">
+      <div class="card">
+        <div class="card-title"><span>↓</span>Как скачать архив из GitHub</div>
+        <div style="font-size:12px;color:var(--muted);line-height:2">
+          1. Откройте репо со скриптами на GitHub<br>
+          2. Нажмите зелёную кнопку <strong style="color:var(--text)">Code</strong> → <strong style="color:var(--text)">Download ZIP</strong><br>
+          3. Загрузите скачанный файл ниже
+        </div>
+        <hr class="divider">
+        <div id="zip-drop-zone" style="border:2px dashed var(--border);border-radius:8px;padding:32px;text-align:center;cursor:pointer;transition:all 0.15s"
+          onclick="document.getElementById('zip-input').click()"
+          ondragover="event.preventDefault();this.style.borderColor='var(--accent)'"
+          ondragleave="this.style.borderColor='var(--border)'"
+          ondrop="handleZipDrop(event)">
+          <div style="font-size:28px;margin-bottom:8px;opacity:0.4">📦</div>
+          <div style="font-size:13px;color:var(--muted)">Перетащите ZIP сюда или нажмите для выбора</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">repository-main.zip</div>
+        </div>
+        <input type="file" id="zip-input" accept=".zip" style="display:none" onchange="handleZipFile(this.files[0])">
+        <div id="zip-status" class="mt8"></div>
+      </div>
+
+      <div class="card" id="zip-folders-card" style="display:none">
+        <div class="card-title"><span>03</span>Выберите папки</div>
+        <div class="field">
+          <label>Base path внутри архива</label>
+          <input id="zip-base-path" placeholder="scripts/apex/Post Deployment Scripts" value="" oninput="filterZipFolders()">
+        </div>
+        <div id="zip-folder-list" class="file-tree"></div>
+        <hr class="divider">
+        <div class="flex gap8 flex-end">
+          <button class="btn btn-sm" style="background:var(--surface2);color:var(--muted)" onclick="selectAll(true)">Выбрать все</button>
+          <button class="btn btn-sm" style="background:var(--surface2);color:var(--muted)" onclick="selectAll(false)">Снять все</button>
+          <button class="btn btn-primary" onclick="goToStep3()">Запустить →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- GITHUB MODE -->
+    <div id="source-git" style="display:none">
+      <div class="card">
+        <div class="card-title"><span>GH</span>GitHub токен</div>
+        <div class="field">
+          <label>Personal Access Token <span style="color:var(--muted)">(сохраняется в localStorage)</span></label>
+          <div style="display:flex;gap:8px">
+            <input id="gh-pat-input" type="password" placeholder="ghp_... или github_pat_..." autocomplete="off" style="flex:1">
+            <button class="btn btn-gh btn-sm" onclick="saveGHToken()">Сохранить</button>
+          </div>
+        </div>
+        <div id="gh-token-status" class="mt8"></div>
+        <div class="text-muted mt8" style="line-height:1.7">
+          Нужен scope <code style="background:var(--surface2);padding:1px 5px;border-radius:4px;font-family:var(--mono);font-size:11px">repo</code> (classic) или Contents: Read-only (fine-grained).<br>
+          Если org использует SSO: после создания токена нажмите <strong style="color:var(--text)">Configure SSO → Authorize</strong>.
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span>📁</span>Репозиторий</div>
+        <div class="grid2">
+          <div class="field">
+            <label>Repository</label>
+            <select id="repo-select" onchange="loadFolders()">
+              <option value="">— выберите репо —</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Base path</label>
+            <input id="scripts-path" placeholder="scripts/apex/Post Deployment Scripts" value="">
+          </div>
+        </div>
+        <div class="field">
+          <label>Расширения файлов</label>
+          <input id="file-exts" placeholder=".txt, .apex" value=".txt, .apex">
+        </div>
+        <button class="btn btn-sm" style="background:var(--surface2);color:var(--text)" onclick="loadRepos()">↻ Загрузить репозитории</button>
+      </div>
+
+      <div class="card" id="folders-card">
+        <div class="card-title"><span>03</span>Выберите папки</div>
+        <div id="folder-list">
+          <div class="empty"><div class="empty-icon">📁</div>Выберите репо выше</div>
+        </div>
+        <hr class="divider">
+        <div class="flex gap8 flex-end">
+          <button class="btn btn-sm" style="background:var(--surface2);color:var(--muted)" onclick="selectAll(true)">Выбрать все</button>
+          <button class="btn btn-sm" style="background:var(--surface2);color:var(--muted)" onclick="selectAll(false)">Снять все</button>
+          <button class="btn btn-primary" onclick="goToStep3()">Запустить →</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- SECTION 3: RUN -->
+  <div id="section-run" style="display:none">
+    <div class="summary" id="summary" style="display:none">
+      <div class="summary-stat stat-total"><div class="num" id="sum-total">0</div><div class="lbl">Total</div></div>
+      <div class="summary-stat stat-pass"><div class="num" id="sum-pass">0</div><div class="lbl">Passed</div></div>
+      <div class="summary-stat stat-fail"><div class="num" id="sum-fail">0</div><div class="lbl">Failed</div></div>
+      <div class="summary-stat" style="background:var(--surface2)"><div class="num" id="sum-time" style="color:var(--muted);font-size:20px">—</div><div class="lbl">Total time</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" id="run-title"><span>▶</span>Ready to run</div>
+      <div class="progress-bar" id="progress-bar" style="display:none">
+        <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+      </div>
+      <div class="run-log" id="run-log">
+        <div class="empty"><div class="empty-icon">⚡</div>Results will appear here</div>
+      </div>
+      <hr class="divider">
+      <div class="flex gap8">
+        <button class="btn" style="background:var(--surface2);color:var(--text)" onclick="goToStep2()">← Back</button>
+        <button class="btn btn-primary" id="run-btn" onclick="runScripts()">▶ Run scripts</button>
+        <div style="margin-left:auto;display:flex;gap:8px">
+          <button class="btn btn-sm" style="background:var(--surface2);color:var(--muted)" id="view-report-btn" onclick="navTo('report')" style="display:none">📊 View report</button>
+          <button class="btn btn-sm" style="background:var(--surface2);color:var(--muted)" id="export-btn" onclick="exportReportHTML()">⬇ Export HTML</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div> <!-- /view-app -->
+
+<!-- REPORT VIEW -->
+<div id="view-report" style="display:none">
+
+  <!-- HISTORY LIST -->
+  <div id="report-history-section">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Run history</div>
+      <button class="btn btn-sm btn-danger" onclick="clearHistory()">Clear all</button>
+    </div>
+    <div id="history-list">
+      <div class="empty"><div class="empty-icon">📋</div>No runs yet — go to the App tab and run some scripts first.</div>
+    </div>
+  </div>
+
+  <!-- RUN DETAIL -->
+  <div id="report-detail" style="display:none">
+    <!-- Back + meta -->
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+      <button class="btn btn-sm" style="background:var(--surface2);color:var(--text)" onclick="showHistoryList()">← All runs</button>
+      <div style="flex:1">
+        <div style="font-family:var(--mono);font-size:13px" id="det-title"></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px" id="det-meta"></div>
+      </div>
+      <button class="btn btn-sm" style="background:var(--surface2);color:var(--muted)" onclick="exportReportHTMLFromRun(currentDetailRun)">⬇ Export HTML</button>
+    </div>
+
+    <!-- Folders that were run -->
+    <div id="det-folders-bar" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px"></div>
+
+    <!-- Summary -->
+    <div class="summary" style="margin-bottom:20px">
+      <div class="summary-stat stat-total"><div class="num" id="det-total">0</div><div class="lbl">Total</div></div>
+      <div class="summary-stat stat-pass"><div class="num" id="det-pass">0</div><div class="lbl">Passed</div></div>
+      <div class="summary-stat stat-fail"><div class="num" id="det-fail">0</div><div class="lbl">Failed</div></div>
+      <div class="summary-stat" style="background:var(--surface2)"><div class="num" id="det-time" style="color:var(--muted);font-size:20px">—</div><div class="lbl">Duration</div></div>
+    </div>
+
+    <!-- Filters -->
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+      <button class="btn btn-sm" id="filter-all"  onclick="filterReport('all')"  style="background:var(--accent);color:#fff">All</button>
+      <button class="btn btn-sm" id="filter-fail" onclick="filterReport('fail')" style="background:var(--surface2);color:var(--muted)">❌ Failed only</button>
+      <button class="btn btn-sm" id="filter-pass" onclick="filterReport('pass')" style="background:var(--surface2);color:var(--muted)">✅ Passed only</button>
+      <input id="report-search" placeholder="Search by script name…" oninput="filterReport(currentFilter)"
+        style="flex:1;min-width:160px;padding:6px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--sans);font-size:12px;outline:none">
+    </div>
+
+    <!-- Table -->
+    <div class="card" style="padding:0;overflow:hidden">
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead>
+          <tr style="background:var(--surface2);border-bottom:1px solid var(--border)">
+            <th style="padding:10px 14px;width:36px;font-weight:500"></th>
+            <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:11px;color:var(--muted);font-weight:500">Folder</th>
+            <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:11px;color:var(--muted);font-weight:500">Script</th>
+            <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:11px;color:var(--muted);font-weight:500;width:70px">Time</th>
+            <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:11px;color:var(--muted);font-weight:500">Result / Error</th>
+          </tr>
+        </thead>
+        <tbody id="report-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div> <!-- /view-report -->
+
+<!-- DOCS VIEW -->
+<div id="view-docs" style="display:none">
+  <div class="card docs-body">
+
+    <div class="docs-toc">
+      <strong style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:6px">ON THIS PAGE</strong>
+      <a href="#doc-what">What is Apex Runner?</a>
+      <a href="#doc-how">How it works</a>
+      <a href="#doc-deploy">Deploying to GitHub Pages</a>
+      <a href="#doc-sf">Salesforce login (SSO)</a>
+      <a href="#doc-scripts">Script sources</a>
+      <a href="#doc-structure">Repo structure</a>
+      <a href="#doc-security">Security</a>
+      <a href="#doc-config">Config reference</a>
+      <a href="#doc-faq">FAQ</a>
+    </div>
+
+    <h2 id="doc-what">What is Apex Runner?</h2>
+    <p>Apex Runner is a lightweight browser-based tool for running Apex scripts stored in a GitHub repository against any Salesforce sandbox. It lives as a single <code>index.html</code> file on GitHub Pages — no server, no backend, no installation required.</p>
+    <p>It was built to solve a common problem: when a new sandbox is created, a set of post-deployment Apex scripts needs to be executed to set up reference data (approval rules, CPQ configuration, etc.). Doing this manually — opening Developer Console, pasting each script one by one — is slow and error-prone.</p>
+
+    <div class="docs-callout good">
+      <strong>No infrastructure needed.</strong> The app is a static HTML file. It talks directly to Salesforce and GitHub APIs from your browser. Nothing is stored on any server.
+    </div>
+
+    <h2 id="doc-how">How it works</h2>
+    <h3>Step 1 — Connect to Salesforce</h3>
+    <p>Click <strong>Login with Salesforce SSO</strong>. You'll be redirected to your org's standard Salesforce login page — the same one you use every day, with your SSO button. After authenticating, you're returned to the app with a session token. The token lives only in <code>sessionStorage</code> and is gone when you close the tab.</p>
+
+    <h3>Step 2 — Select scripts</h3>
+    <p>Choose where to load scripts from — a ZIP archive downloaded from GitHub, or directly from a GitHub repository. Select the folders you want to run. Scripts execute in alphabetical order within each folder, so naming them <code>01_setup.txt</code>, <code>02_configure.txt</code> controls execution order.</p>
+
+    <h3>Step 3 — Run</h3>
+    <p>The app sends each script to Salesforce via the <strong>Tooling API</strong> (<code>executeAnonymous</code> endpoint) over HTTPS. Results appear in real time — each script shows pass ✅ or fail ❌ with the error message and execution time. When finished, you can export a full HTML report.</p>
+
+    <h2 id="doc-deploy">Deploying to GitHub Pages</h2>
+    <ol>
+      <li>Create a new GitHub repository (can be public or private if your org is on Team/Enterprise plan)</li>
+      <li>Place <code>index.html</code> in the root of the repo</li>
+      <li>Fill in the <a href="#doc-config">CONFIG block</a> at the top of the script section</li>
+      <li>Go to <strong>Settings → Pages → Source: Deploy from branch → main / root</strong></li>
+      <li>After 1–2 minutes the app is live at <code>https://your-org.github.io/repo-name/</code></li>
+    </ol>
+
+    <div class="docs-callout warn">
+      <strong>Public repo + CONFIG token:</strong> If your Pages repo is public, do not hardcode the GitHub token in <code>CONFIG.GH_TOKEN</code> — anyone can read it from the source. Instead, leave it empty and each user enters their own PAT in the GitHub tab on step 2. It gets saved to their browser's <code>localStorage</code>.
+    </div>
+
+    <h2 id="doc-sf">Salesforce login (SSO)</h2>
+    <p>The app uses <strong>OAuth 2.0 PKCE flow</strong> with the public <code>PlatformCLI</code> client ID — the same one Salesforce CLI uses internally. This means <strong>no Connected App setup is required</strong>.</p>
+    <p>PKCE (Proof Key for Code Exchange) is a secure OAuth flow designed for browser-based apps. It does not require a client secret. When you click Login, the app generates a one-time code challenge, redirects you to Salesforce, and exchanges the returned code for an access token — all without any server involvement.</p>
+    <p>SSO works transparently: Salesforce's login page shows your company's SSO button exactly as it does when you log in normally. The app doesn't need to know anything about your SSO provider.</p>
+
+    <div class="docs-callout info">
+      If you want to use your own Connected App instead of <code>PlatformCLI</code> (for example to restrict access to specific users), open <strong>Advanced settings</strong> on the Connect screen and enter your Consumer Key. Setup: App Manager → New Connected App → Enable OAuth → PKCE enabled, no secret required, callback URL set to your GitHub Pages URL.
+    </div>
+
+    <h2 id="doc-scripts">Script sources</h2>
+
+    <h3>📦 ZIP archive</h3>
+    <p>Download the repo as a ZIP from GitHub (<strong>Code → Download ZIP</strong>) and drag it into the app. No GitHub token needed. The app reads the ZIP entirely in browser memory — nothing is uploaded anywhere. Use this when you don't want to deal with tokens, or when working offline.</p>
+
+    <h3>🔗 GitHub repository</h3>
+    <p>Connect directly to a private GitHub repo using a Personal Access Token. The token is saved in your browser's <code>localStorage</code> so you only enter it once per device. The app uses the <strong>GitHub Contents API</strong> and <strong>Git Trees API</strong> to browse the repo structure and fetch file contents over HTTPS.</p>
+
+    <table class="docs-table">
+      <tr><th>Feature</th><th>ZIP</th><th>GitHub</th></tr>
+      <tr><td>Requires token</td><td><strong>No</strong></td><td><strong>Yes</strong> (PAT)</td></tr>
+      <tr><td>Always latest scripts</td><td>Manual download</td><td><strong>Always fresh</strong></td></tr>
+      <tr><td>Works offline</td><td><strong>Yes</strong></td><td>No</td></tr>
+      <tr><td>Setup time</td><td><strong>Instant</strong></td><td>~5 min (create PAT)</td></tr>
+    </table>
+
+    <h2 id="doc-structure">Repo structure</h2>
+    <p>Scripts should be organized in subfolders under a base path. The app displays each subfolder as a collapsible group with checkboxes. Both <code>.txt</code> and <code>.apex</code> extensions are supported by default.</p>
+    <pre>scripts/
+  apex/
+    Post Deployment Scripts/     ← set this as base path
+      Approval Rules/
+        Credit Routers/
+          CPQ1-168106.txt
+          CPQ1-183625.txt
+        Other/
+          CPQ1-200000.txt
+      CPQ Setup/
+        01_price_rules.txt
+        02_discount_schedules.txt
+      Users/
+        01_assign_permissions.txt</pre>
+    <p>Scripts within each folder run in <strong>alphabetical order</strong>. Prefix filenames with numbers (<code>01_</code>, <code>02_</code>) to control execution order explicitly.</p>
+
+    <h2 id="doc-security">Security</h2>
+
+    <table class="docs-table">
+      <tr><th>Data</th><th>Where it lives</th><th>Who can see it</th></tr>
+      <tr><td><strong>SF access token</strong></td><td><code>sessionStorage</code></td><td>Only current browser tab. Gone on close.</td></tr>
+      <tr><td><strong>GitHub PAT</strong></td><td><code>localStorage</code></td><td>Only this browser on this device.</td></tr>
+      <tr><td><strong>Script contents</strong></td><td>Browser memory only</td><td>Sent to Salesforce via HTTPS only.</td></tr>
+      <tr><td><strong>Instance URL</strong></td><td><code>localStorage</code></td><td>Not a secret — it's a public address.</td></tr>
+      <tr><td><strong>index.html source</strong></td><td>GitHub Pages</td><td>Public — contains no secrets.</td></tr>
+    </table>
+
+    <p>There is no backend server. No data is logged, tracked, or stored anywhere except your own browser. All API calls go directly from your browser to Salesforce or GitHub over HTTPS.</p>
+
+    <h3>GitHub token permissions</h3>
+    <p>Use a <strong>fine-grained PAT</strong> with the minimum permissions:</p>
+    <ul>
+      <li>Repository access: <strong>Only select repositories</strong> → choose the scripts repo only</li>
+      <li>Repository permissions → Contents: <strong>Read-only</strong></li>
+      <li>Everything else: No access</li>
+    </ul>
+    <p>If your org enforces SAML SSO on GitHub, after creating the token click <strong>Configure SSO → Authorize</strong> next to your organization name.</p>
+    <p>For a shared token used by the whole team, create it on a <strong>bot/service account</strong> rather than a personal account — so the token doesn't break if someone leaves the company.</p>
+
+    <h2 id="doc-config">Config reference</h2>
+    <p>Edit the <code>CONFIG</code> block near the top of the <code>&lt;script&gt;</code> section in <code>index.html</code>:</p>
+    <pre>const CONFIG = {
+  // GitHub read-only PAT for fetching scripts from the repo.
+  // Leave empty if users will enter their own token in the UI.
+  // WARNING: do not set this if index.html is in a public repo.
+  GH_TOKEN: '',            // e.g. 'ghp_xxxxxxxxxxxx'
+
+  // Default repo shown on step 2 (GitHub mode).
+  DEFAULT_REPO: '',        // e.g. 'myorg/salesforce-scripts'
+
+  // Base path inside the repo where script folders live.
+  DEFAULT_PATH: 'scripts/apex/Post Deployment Scripts',
+
+  // File extensions to look for (comma-separated).
+  DEFAULT_EXTS: '.txt, .apex',
+};</pre>
+
+    <h2 id="doc-faq">FAQ</h2>
+
+    <h3>Do I need a Salesforce Connected App?</h3>
+    <p>No. The app uses the public <code>PlatformCLI</code> client ID which works on any org without any setup. If you want tighter control over who can use the app, you can create your own Connected App and enter its Consumer Key in Advanced settings.</p>
+
+    <h3>Can I run scripts on production?</h3>
+    <p>Technically yes — the app works against any org you can log into. But it's designed for sandboxes. Be careful. The HTML report gives you a full audit trail of what ran and what the outcome was.</p>
+
+    <h3>What happens if a script fails?</h3>
+    <p>The app logs the error message returned by Salesforce (compile error, exception message, etc.), marks the script as ❌ failed, and continues with the next script. It never stops mid-run. After finishing, the summary shows total passed / failed count, and you can export the full report.</p>
+
+    <h3>How do I control the order scripts run in?</h3>
+    <p>Scripts within a folder run alphabetically. Prefix filenames with numbers: <code>01_create_groups.txt</code>, <code>02_assign_approvers.txt</code>. Folders themselves also run in alphabetical order when all are selected.</p>
+
+    <h3>The Salesforce login redirects me but nothing happens</h3>
+    <p>Make sure the callback URL registered in your Connected App (or the default PlatformCLI app) matches exactly the URL of this page including the trailing slash. Also check that pop-ups are not blocked.</p>
+
+    <h3>I get a 403 error when loading scripts from GitHub</h3>
+    <p>Your PAT probably hasn't been authorized for your organization's SSO. Go to <strong>github.com → Settings → Personal access tokens</strong>, find your token, and click <strong>Configure SSO → Authorize</strong> next to your org name.</p>
+
+  </div>
+</div> <!-- /view-docs -->
+
+</main>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// CONFIG — fill in once when deploying
+// ══════════════════════════════════════════
+const CONFIG = {
+  // GitHub read-only PAT for fetching scripts from the repo.
+  // Leave empty if users will enter their own token in the UI.
+  // WARNING: do not set this if index.html is in a public repo.
+  GH_TOKEN: '',            // e.g. 'ghp_xxxxxxxxxxxx'
+
+  // Default repo shown on step 2 (GitHub mode).
+  DEFAULT_REPO: '',        // e.g. 'myorg/salesforce-scripts'
+
+  // Base path inside the repo where script folders live.
+  DEFAULT_PATH: 'scripts/apex/Post Deployment Scripts',
+
+  // File extensions to look for (comma-separated).
+  DEFAULT_EXTS: '.txt, .apex',
+};
+
+// ══════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════
+const STATE = {
+  sfToken: null,
+  sfInstance: null,
+  sfUser: null,
+  ghToken: null,
+  ghUser: null,
+  repos: [],
+  selectedScripts: [],
+  results: [],
+  lastRun: null,
+};
+
+const STORAGE_KEY = 'apex_runner_config';
+
+// ══════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════
+function init() {
+  const origin = location.origin + location.pathname.replace(/\/$/, '');
+  const sfCbEl = document.getElementById('sf-callback-display');
+  if (sfCbEl) sfCbEl.textContent = origin + '/';
+
+  // Restore saved SF instance
+  const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+  if (saved.sfInstance)  document.getElementById('sf-instance').value  = saved.sfInstance;
+  if (saved.sfClientId)  document.getElementById('sf-client-id').value = saved.sfClientId;
+  if (saved.scriptsPath) document.getElementById('scripts-path').value = saved.scriptsPath;
+  if (saved.fileExts)    document.getElementById('file-exts').value    = saved.fileExts;
+
+  // Apply CONFIG defaults if fields are empty
+  if (!document.getElementById('scripts-path').value) document.getElementById('scripts-path').value = CONFIG.DEFAULT_PATH;
+  if (!document.getElementById('file-exts').value)    document.getElementById('file-exts').value    = CONFIG.DEFAULT_EXTS;
+
+  // Auto-connect GitHub from CONFIG token (silent, no UI needed)
+  const ghToken = CONFIG.GH_TOKEN || sessionStorage.getItem('gh_token');
+  if (ghToken) {
+    STATE.ghToken = ghToken;
+    sessionStorage.setItem('gh_token', ghToken);
+    // Don't need to show GH connected state — it's invisible to user
+  }
+
+  // Handle OAuth callbacks
+  const params = new URLSearchParams(location.search);
+  const hash   = new URLSearchParams(location.hash.slice(1));
+
+  if (hash.get('access_token')) {
+    STATE.sfToken    = hash.get('access_token');
+    STATE.sfInstance = hash.get('instance_url') || document.getElementById('sf-instance').value;
+    history.replaceState({}, '', location.pathname);
+    onSFConnected();
+  } else if (params.get('code') && params.get('state')) {
+    const st = params.get('state');
+    if (st === 'sf_pkce') handleSFPKCE(params.get('code'));
+    history.replaceState({}, '', location.pathname);
+  }
+
+  // Restore SF session
+  const sfToken = sessionStorage.getItem('sf_token');
+  const sfInst  = sessionStorage.getItem('sf_instance');
+  const sfUser  = sessionStorage.getItem('sf_user');
+  if (sfToken) { STATE.sfToken = sfToken; STATE.sfInstance = sfInst; STATE.sfUser = sfUser; onSFConnected(true); }
+}
+
+function saveConfig() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    sfClientId:  document.getElementById('sf-client-id').value,
+    sfInstance:  document.getElementById('sf-instance').value,
+    scriptsPath: document.getElementById('scripts-path').value,
+    fileExts:    document.getElementById('file-exts').value,
+  }));
+}
+
+function ghTab() {} // stub — больше не нужен
+
+// ══════════════════════════════════════════
+// SALESFORCE AUTH (PKCE)
+// ══════════════════════════════════════════
+async function connectSF() {
+  saveConfig();
+  const clientId  = document.getElementById('sf-client-id').value.trim() || 'PlatformCLI';
+  const instance  = document.getElementById('sf-instance').value.trim().replace(/\/$/, '');
+  if (!instance) { alert('Введите Instance URL вашей org (например: https://mycompany.my.salesforce.com)'); return; }
+
+  // PKCE
+  const verifier  = generateVerifier();
+  const challenge = await generateChallenge(verifier);
+  sessionStorage.setItem('sf_verifier', verifier);
+  sessionStorage.setItem('sf_instance_pending', instance);
+  sessionStorage.setItem('sf_client_id', clientId);
+
+  const redirect = location.origin + location.pathname;
+  const url = `${instance}/services/oauth2/authorize`
+    + `?response_type=code&client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirect)}`
+    + `&code_challenge=${challenge}&code_challenge_method=S256&state=sf_pkce`
+    + `&scope=api%20refresh_token`;
+  location.href = url;
+}
+
+async function handleSFPKCE(code) {
+  const verifier  = sessionStorage.getItem('sf_verifier');
+  const instance  = sessionStorage.getItem('sf_instance_pending');
+  const clientId  = sessionStorage.getItem('sf_client_id');
+  const redirect  = location.origin + location.pathname;
+
+  // Token exchange — SF supports PKCE without secret
+  const res = await fetch(`${instance}/services/oauth2/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'authorization_code', code,
+      client_id: clientId, redirect_uri: redirect,
+      code_verifier: verifier,
+    }),
+  });
+  const data = await res.json();
+  if (data.access_token) {
+    STATE.sfToken    = data.access_token;
+    STATE.sfInstance = data.instance_url || instance;
+    sessionStorage.setItem('sf_token', STATE.sfToken);
+    sessionStorage.setItem('sf_instance', STATE.sfInstance);
+    await fetchSFUser();
+    onSFConnected();
+  } else {
+    showStatus('sf-status', '❌ ' + (data.error_description || JSON.stringify(data)), 'fail');
+  }
+}
+
+async function fetchSFUser() {
+  try {
+    const res = await sfFetch('/services/oauth2/userinfo');
+    const u = await res.json();
+    STATE.sfUser = u.name || u.email || u.preferred_username;
+    sessionStorage.setItem('sf_user', STATE.sfUser);
+  } catch(e) {}
+}
+
+function onSFConnected(silent) {
+  const user = STATE.sfUser || 'connected';
+  showStatus('sf-status', `✓ Вы вошли как ${user}`, 'pass');
+  document.getElementById('sf-btn').innerHTML = '✓ Подключено';
+  document.getElementById('sf-btn').disabled = true;
+  const inst = (STATE.sfInstance||'').replace(/https?:\/\//,'').split('/')[0];
+  updateHeaderBadge('sf', inst);
+  if (!silent) {
+    // After fresh login — auto-advance if GH token already in CONFIG
+    setTimeout(() => maybeAutoAdvance(), 400);
+  } else {
+    checkBothConnected();
+  }
+}
+
+// ══════════════════════════════════════════
+// GITHUB AUTH
+// ══════════════════════════════════════════
+function connectGH() {
+  saveConfig();
+  // PAT mode — read from gh-pat-input in source-git section
+  const pat = document.getElementById('gh-pat-input')?.value.trim();
+  if (pat) {
+    STATE.ghToken = pat;
+    sessionStorage.setItem('gh_token', pat);
+    localStorage.setItem('gh_pat', pat);
+    fetchGHUser().then(() => onGHConnected());
+    return;
+  }
+  // OAuth flow fallback (advanced)
+  const clientId = document.getElementById('gh-client-id').value.trim();
+  if (!clientId) { alert('Please enter your GitHub PAT or OAuth Client ID'); return; }
+  const redirect = encodeURIComponent(location.origin + location.pathname);
+  const url = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirect}&scope=repo&state=gh_oauth`;
+  location.href = url;
+}
+
+async function handleGHCode(code) {
+  const proxy = document.getElementById('gh-proxy').value.trim();
+  if (!proxy) {
+    // Dev mode: try direct (will fail due to CORS in prod, but useful for testing)
+    alert('No proxy URL set. In production you need a token proxy. See setup instructions.');
+    return;
+  }
+  const res  = await fetch(proxy, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code }),
+  });
+  const data = await res.json();
+  if (data.access_token) {
+    STATE.ghToken = data.access_token;
+    sessionStorage.setItem('gh_token', STATE.ghToken);
+    await fetchGHUser();
+    onGHConnected();
+  } else {
+    showStatus('gh-status', '❌ ' + (data.error || JSON.stringify(data)), 'fail');
+  }
+}
+
+// For demo / local testing: allow pasting a PAT directly
+async function fetchGHUser() {
+  try {
+    const res = await ghFetch('https://api.github.com/user');
+    const u   = await res.json();
+    STATE.ghUser = u.login;
+    sessionStorage.setItem('gh_user', u.login);
+  } catch(e) {}
+}
+
+function onGHConnected(silent) {
+  const user = STATE.ghUser || 'connected';
+  showStatus('gh-status', `✓ ${user}`, 'pass');
+  document.getElementById('gh-btn').textContent = '✓ Connected';
+  document.getElementById('gh-btn').disabled = true;
+  if (!silent) updateHeaderBadge('gh', user);
+  else updateHeaderBadge('gh', STATE.ghUser || 'github');
+  checkBothConnected();
+}
+
+// ══════════════════════════════════════════
+// BOTH CONNECTED
+// ══════════════════════════════════════════
+function checkBothConnected() {
+  const ghReady = !!(STATE.ghToken || CONFIG.GH_TOKEN);
+  if (STATE.sfToken && ghReady) {
+    document.getElementById('connect-next-wrap').style.cssText = 'display:flex!important;justify-content:flex-end;margin-top:8px';
+  }
+}
+
+// Auto-advance to step 2 after SF login if GH is pre-configured
+function maybeAutoAdvance() {
+  if (CONFIG.GH_TOKEN || STATE.ghToken) goToStep2();
+  else checkBothConnected();
+}
+
+// ══════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════
+function goToStep2() {
+  setStep(2);
+  document.getElementById('section-connect').style.display = 'none';
+  document.getElementById('section-select').style.display  = 'block';
+  document.getElementById('section-run').style.display     = 'none';
+  // Restore saved GH token
+  const savedPat = localStorage.getItem('gh_pat');
+  if (savedPat && !STATE.ghToken) {
+    STATE.ghToken = savedPat;
+    const patInput = document.getElementById('gh-pat-input');
+    if (patInput) patInput.value = savedPat;
+  }
+  switchSource('zip'); // default to ZIP
+}
+
+function goToStep3() {
+  const selected = collectSelected();
+  if (selected.length === 0) { alert('Select at least one folder or script'); return; }
+  STATE.selectedScripts = selected;
+  setStep(3);
+  document.getElementById('section-connect').style.display = 'none';
+  document.getElementById('section-select').style.display  = 'none';
+  document.getElementById('section-run').style.display     = 'block';
+  const title = document.getElementById('run-title');
+  title.innerHTML = `<span>▶</span>Ready — ${selected.length} script(s) selected`;
+  STATE.results = [];
+  document.getElementById('run-log').innerHTML = '<div class="empty"><div class="empty-icon">⚡</div>Press Run to start</div>';
+  document.getElementById('summary').style.display = 'none';
+  document.getElementById('run-btn').disabled = false;
+}
+
+function setStep(n) {
+  for (let i = 1; i <= 3; i++) {
+    const el = document.getElementById('step-' + i);
+    el.className = 'step' + (i < n ? ' done' : i === n ? ' active' : '');
+    el.querySelector('.step-num').textContent = i < n ? '✓' : i;
+  }
+}
+
+// ══════════════════════════════════════════
+// NAV
+// ══════════════════════════════════════════
+function navTo(view) {
+  document.getElementById('view-app').style.display    = view === 'app'    ? '' : 'none';
+  document.getElementById('view-report').style.display = view === 'report' ? '' : 'none';
+  document.getElementById('view-docs').style.display   = view === 'docs'   ? '' : 'none';
+  document.getElementById('nav-app').classList.toggle('active',    view === 'app');
+  document.getElementById('nav-report').classList.toggle('active', view === 'report');
+  document.getElementById('nav-docs').classList.toggle('active',   view === 'docs');
+  if (view === 'report') renderHistoryList();
+}
+
+// ══════════════════════════════════════════
+// SOURCE SWITCHING
+// ══════════════════════════════════════════
+let currentSource = 'zip'; // 'zip' | 'git'
+let zipFiles = {};  // { 'folder/script.txt': 'content...' }
+
+function switchSource(mode) {
+  currentSource = mode;
+  const isZip = mode === 'zip';
+
+  document.getElementById('source-zip').style.display = isZip ? '' : 'none';
+  document.getElementById('source-git').style.display = isZip ? 'none' : '';
+
+  const tabZip = document.getElementById('tab-zip');
+  const tabGit = document.getElementById('tab-git');
+
+  tabZip.style.border  = isZip ? '2px solid var(--accent)' : '1px solid var(--border)';
+  tabZip.style.background = isZip ? 'var(--accent-dim)' : 'var(--surface2)';
+  tabZip.querySelector('div').style.color = isZip ? 'var(--accent)' : 'var(--muted)';
+
+  tabGit.style.border  = !isZip ? '2px solid var(--accent)' : '1px solid var(--border)';
+  tabGit.style.background = !isZip ? 'var(--accent-dim)' : 'var(--surface2)';
+  tabGit.querySelector('div').style.color = !isZip ? 'var(--accent)' : 'var(--muted)';
+
+  if (mode === 'git' && !STATE.ghToken) {
+    const saved = localStorage.getItem('gh_pat');
+    if (saved) { STATE.ghToken = saved; showGHTokenStatus('✓ Токен загружен из localStorage', 'pass'); }
+  }
+  if (mode === 'git' && STATE.ghToken) loadRepos();
+}
+
+// ── GH TOKEN SAVE ──
+function saveGHToken() {
+  const pat = document.getElementById('gh-pat-input').value.trim();
+  if (!pat) return;
+  STATE.ghToken = pat;
+  localStorage.setItem('gh_pat', pat);
+  showGHTokenStatus('✓ Сохранено', 'pass');
+  loadRepos();
+}
+
+function showGHTokenStatus(msg, type) {
+  const el = document.getElementById('gh-token-status');
+  const c  = type === 'pass' ? 'var(--green)' : 'var(--red)';
+  el.innerHTML = `<span style="color:${c};font-size:12px">${escHtml(msg)}</span>`;
+}
+
+// ── ZIP HANDLING ──
+async function handleZipDrop(e) {
+  e.preventDefault();
+  document.getElementById('zip-drop-zone').style.borderColor = 'var(--border)';
+  const file = e.dataTransfer.files[0];
+  if (file) handleZipFile(file);
+}
+
+async function handleZipFile(file) {
+  if (!file || !file.name.endsWith('.zip')) {
+    showStatus('zip-status', '❌ Нужен .zip файл', 'fail'); return;
+  }
+  showStatus('zip-status', '⏳ Читаю архив…', 'warn');
+
+  try {
+    const JSZip = await loadJSZip();
+    const zip   = await JSZip.loadAsync(file);
+    zipFiles = {};
+
+    const extsRaw = document.getElementById('zip-base-path')?.value || CONFIG.DEFAULT_EXTS;
+    const exts    = CONFIG.DEFAULT_EXTS.split(',').map(e => e.trim().toLowerCase());
+
+    for (const [path, entry] of Object.entries(zip.files)) {
+      if (entry.dir) continue;
+      const lower = path.toLowerCase();
+      if (exts.some(ext => lower.endsWith(ext))) {
+        zipFiles[path] = await entry.async('string');
+      }
+    }
+
+    const count = Object.keys(zipFiles).length;
+    if (count === 0) {
+      showStatus('zip-status', `❌ Скриптов не найдено (ищем ${exts.join(', ')})`, 'fail'); return;
+    }
+
+    showStatus('zip-status', `✅ Найдено ${count} скриптов в архиве`, 'pass');
+
+    // Set default base path from CONFIG
+    const bpEl = document.getElementById('zip-base-path');
+    if (!bpEl.value) bpEl.value = CONFIG.DEFAULT_PATH;
+
+    renderZipFolders();
+    document.getElementById('zip-folders-card').style.display = '';
+    document.getElementById('zip-drop-zone').style.borderColor = 'var(--green)';
+  } catch(e) {
+    showStatus('zip-status', '❌ Ошибка: ' + e.message, 'fail');
+  }
+}
+
+function filterZipFolders() { renderZipFolders(); }
+
+function renderZipFolders() {
+  const basePath = document.getElementById('zip-base-path').value.trim();
+  const exts     = CONFIG.DEFAULT_EXTS.split(',').map(e => e.trim().toLowerCase());
+  const list     = document.getElementById('zip-folder-list');
+
+  // Group files by folder relative to basePath
+  const groups = {};
+  for (const path of Object.keys(zipFiles)) {
+    // Strip leading folder (GitHub ZIP adds repo-branch/ prefix)
+    const parts     = path.split('/');
+    const stripped  = parts.slice(1).join('/'); // remove "repo-main/" prefix
+    if (basePath && !stripped.startsWith(basePath)) continue;
+
+    const rel    = basePath ? stripped.slice(basePath.length).replace(/^\//, '') : stripped;
+    const rparts = rel.split('/');
+    const folder = rparts.length > 1 ? rparts.slice(0, -1).join('/') : '(root)';
+    const fname  = rparts[rparts.length - 1];
+    if (!exts.some(ext => fname.toLowerCase().endsWith(ext))) continue;
+
+    if (!groups[folder]) groups[folder] = [];
+    groups[folder].push({ name: fname, fullPath: path });
+  }
+
+  if (Object.keys(groups).length === 0) {
+    list.innerHTML = '<div class="empty">Нет скриптов по этому пути. Проверьте base path.</div>';
+    return;
+  }
+
+  list.innerHTML = '';
+  Object.keys(groups).sort().forEach(folder => {
+    const files = groups[folder].sort((a, b) => a.name.localeCompare(b.name));
+    const item  = document.createElement('div');
+    item.className = 'folder-item';
+    const safeAttr = folder.replace(/"/g, '&quot;');
+    item.innerHTML = `
+      <div class="folder-header" onclick="toggleFolder(this)">
+        <input type="checkbox" class="folder-cb" data-folder="${safeAttr}" checked onclick="event.stopPropagation();syncFolder(this)">
+        <span style="opacity:0.5">📁</span>
+        <span class="folder-name">${folder}</span>
+        <span class="folder-count">${files.length} скриптов</span>
+        <span style="color:var(--muted);font-size:11px;margin-left:4px">▾</span>
+      </div>
+      <div class="folder-scripts">
+        ${files.map(f => `
+          <div class="script-item">
+            <input type="checkbox" class="script-cb"
+              data-folder="${safeAttr}" data-file="${f.name}"
+              data-zip-path="${f.fullPath}" data-source="zip" checked>
+            <span>${f.name}</span>
+          </div>`).join('')}
+      </div>`;
+    list.appendChild(item);
+  });
+}
+
+async function loadJSZip() {
+  if (window.JSZip) return window.JSZip;
+  await new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+    s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+  return window.JSZip;
+}
+
+// ── COLLECT SELECTED (both sources) ──
+async function loadRepos() {
+  const sel = document.getElementById('repo-select');
+  sel.innerHTML = '<option>Загрузка…</option>';
+  try {
+    const res   = await ghFetch('https://api.github.com/user/repos?per_page=100&sort=updated');
+    const repos = await res.json();
+    STATE.repos = repos;
+    sel.innerHTML = '<option value="">— выберите репо —</option>' +
+      repos.map(r => `<option value="${r.full_name}" ${r.full_name === CONFIG.DEFAULT_REPO ? 'selected' : ''}>${r.full_name}</option>`).join('');
+    // Auto-load folders if default repo is set
+    if (CONFIG.DEFAULT_REPO) loadFolders();
+  } catch(e) {
+    sel.innerHTML = '<option>Ошибка загрузки репозиториев</option>';
+  }
+}
+
+async function loadFolders() {
+  const repo      = document.getElementById('repo-select').value;
+  const basePath  = document.getElementById('scripts-path').value.trim();
+  const extsRaw   = document.getElementById('file-exts').value || '.txt, .apex';
+  const exts      = extsRaw.split(',').map(e => e.trim().toLowerCase());
+  const list      = document.getElementById('folder-list');
+  if (!repo) return;
+
+  list.innerHTML = '<div class="empty"><div class="empty-icon">⏳</div>Loading…</div>';
+
+  try {
+    // Recursively fetch all files under basePath
+    const allFiles = await ghFetchTree(repo, basePath, exts);
+
+    if (allFiles.length === 0) {
+      list.innerHTML = `<div class="empty">No ${escHtml(exts.join('/'))} files found under <code>${escHtml(basePath)}</code></div>`;
+      return;
+    }
+
+    // Group by immediate subfolder (relative to basePath)
+    const groups = {};
+    for (const f of allFiles) {
+      const rel    = f.path.slice(basePath ? basePath.length + 1 : 0);
+      const parts  = rel.split('/');
+      const folder = parts.length > 1 ? parts.slice(0, -1).join('/') : '(root)';
+      if (!groups[folder]) groups[folder] = [];
+      groups[folder].push({ name: parts[parts.length - 1], url: f.download_url, path: f.path });
+    }
+
+    list.innerHTML = '';
+    const tree = document.createElement('div');
+    tree.className = 'file-tree';
+
+    Object.keys(groups).sort().forEach(folder => {
+      const files = groups[folder].sort((a, b) => a.name.localeCompare(b.name));
+      const item  = document.createElement('div');
+      item.className = 'folder-item';
+      const safeFolderAttr = folder.replace(/"/g, '&quot;');
+      item.innerHTML = `
+        <div class="folder-header" onclick="toggleFolder(this)">
+          <input type="checkbox" class="folder-cb" data-folder="${safeFolderAttr}" checked onclick="event.stopPropagation();syncFolder(this)">
+          <span style="opacity:0.5">📁</span>
+          <span class="folder-name">${folder}</span>
+          <span class="folder-count">${files.length} scripts</span>
+          <span style="color:var(--muted);font-size:11px;margin-left:4px">▾</span>
+        </div>
+        <div class="folder-scripts">
+          ${files.map(f => `
+            <div class="script-item">
+              <input type="checkbox" class="script-cb"
+                data-folder="${safeFolderAttr}"
+                data-file="${f.name}"
+                data-url="${f.url}" checked>
+              <span>${f.name}</span>
+            </div>`).join('')}
+        </div>`;
+      tree.appendChild(item);
+    });
+
+    list.appendChild(tree);
+  } catch(e) {
+    list.innerHTML = `<div class="empty">Error: ${escHtml(e.message)}</div>`;
+  }
+}
+
+// Recursively get all matching files using the Git Trees API (one request!)
+async function ghFetchTree(repo, basePath, exts) {
+  // First get the SHA of basePath
+  const contentsRes = await ghFetch(`https://api.github.com/repos/${repo}/contents/${basePath}`);
+  const contents    = await contentsRes.json();
+
+  // Find the tree SHA — if basePath is a dir, the response is an array
+  // We need the tree SHA from the branch HEAD
+  const branchRes  = await ghFetch(`https://api.github.com/repos/${repo}/git/trees/HEAD?recursive=1`);
+  const treeData   = await branchRes.json();
+
+  if (!treeData.tree) return [];
+
+  const prefix = basePath ? basePath + '/' : '';
+  return treeData.tree.filter(item => {
+    if (item.type !== 'blob') return false;
+    if (!item.path.startsWith(prefix) && basePath) return false;
+    const lower = item.path.toLowerCase();
+    return exts.some(ext => lower.endsWith(ext));
+  }).map(item => ({
+    path:         item.path,
+    download_url: `https://raw.githubusercontent.com/${repo}/HEAD/${item.path}`,
+  }));
+}
+
+function toggleFolder(header) {
+  const scripts = header.nextElementSibling;
+  scripts.style.display = scripts.style.display === 'none' ? '' : 'none';
+}
+
+function syncFolder(cb) {
+  const folder  = cb.dataset.folder;
+  const checked = cb.checked;
+  document.querySelectorAll(`.script-cb[data-folder="${folder}"]`).forEach(s => s.checked = checked);
+}
+
+function selectAll(v) {
+  document.querySelectorAll('.folder-cb, .script-cb').forEach(cb => cb.checked = v);
+}
+
+function collectSelected() {
+  const scripts = [];
+  document.querySelectorAll('.script-cb:checked').forEach(cb => {
+    if (cb.dataset.source === 'zip') {
+      scripts.push({
+        folder:  cb.dataset.folder,
+        name:    cb.dataset.file,
+        source:  'zip',
+        zipPath: cb.dataset.zipPath,
+      });
+    } else {
+      scripts.push({
+        folder: cb.dataset.folder,
+        name:   cb.dataset.file,
+        url:    cb.dataset.url,
+        source: 'git',
+      });
+    }
+  });
+  return scripts;
+}
+
+// ══════════════════════════════════════════
+// RUN APEX
+// ══════════════════════════════════════════
+async function runScripts() {
+  const btn = document.getElementById('run-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Running…';
+
+  const log = document.getElementById('run-log');
+  log.innerHTML = '';
+  STATE.results = [];
+
+  const scripts  = STATE.selectedScripts;
+  const total    = scripts.length;
+  const runStart = Date.now();
+  let pass = 0, fail = 0;
+
+  document.getElementById('progress-bar').style.display = 'block';
+  document.getElementById('summary').style.display      = 'flex';
+
+  for (let i = 0; i < scripts.length; i++) {
+    const s = scripts[i];
+    updateProgress((i / total) * 100);
+    updateSummary(pass, fail, total, Date.now() - runStart);
+
+    const rowId = `log-${i}`;
+    log.insertAdjacentHTML('beforeend', logRow(rowId, s.folder, s.name, 'running', '…', 0));
+    log.scrollTop = log.scrollHeight;
+
+    const start = Date.now();
+    let resultEntry;
+    try {
+      let body;
+      if (s.source === 'zip') {
+        body = zipFiles[s.zipPath];
+        if (!body) throw new Error('File not found in archive: ' + s.zipPath);
+      } else {
+        const raw = await fetch(s.url);
+        body = await raw.text();
+      }
+
+      const res  = await sfFetch('/services/data/v59.0/tooling/executeAnonymous/?anonymousBody=' + encodeURIComponent(body));
+      const data = await res.json();
+      const ms   = Date.now() - start;
+      const ok   = data.compiled && data.success;
+
+      // Rich error info from SF
+      let errorMsg = '', errorLine = null, errorType = '';
+      if (!ok) {
+        if (data.compileProblem)   { errorMsg = data.compileProblem;   errorLine = data.line; errorType = 'Compile error'; }
+        else if (data.exceptionMessage) { errorMsg = data.exceptionMessage; errorLine = data.line; errorType = data.exceptionType || 'Runtime exception'; }
+        else errorMsg = JSON.stringify(data);
+      }
+
+      resultEntry = {
+        folder: s.folder, script: s.name, status: ok ? 'pass' : 'fail',
+        ms, errorMsg, errorLine, errorType,
+        sfLog: data.logs || '',
+        body: body,
+      };
+      updateLogRow(rowId, ok ? 'pass' : 'fail', ok ? 'Success' : `${errorType}: ${errorMsg}${errorLine ? ` (line ${errorLine})` : ''}`, ms);
+      if (ok) pass++; else fail++;
+    } catch(e) {
+      const ms = Date.now() - start;
+      resultEntry = { folder: s.folder, script: s.name, status: 'fail', ms, errorMsg: e.message, errorLine: null, errorType: 'Error', sfLog: '', body: '' };
+      updateLogRow(rowId, 'fail', e.message, ms);
+      fail++;
+    }
+    STATE.results.push(resultEntry);
+    updateSummary(pass, fail, total, Date.now() - runStart);
+  }
+
+  const totalMs = Date.now() - runStart;
+  updateProgress(100);
+  updateSummary(pass, fail, total, totalMs);
+  btn.textContent = '▶ Run again';
+  btn.disabled    = false;
+
+  document.getElementById('run-title').innerHTML =
+    `<span>${fail === 0 ? '✅' : '⚠️'}</span>Done — ${pass}/${total} passed`;
+
+  // Collect unique folders from this run
+  const folders = [...new Set(scripts.map(s => s.folder))];
+
+  const run = {
+    id:       Date.now().toString(),
+    ts:       Date.now(),
+    org:      STATE.sfInstance,
+    source:   scripts[0]?.source || 'unknown',
+    folders,
+    results:  STATE.results,
+    totalMs, pass, fail, total,
+  };
+
+  finalizeReport(run);
+  document.getElementById('view-report-btn').style.display = '';
+}
+
+function updateSummary(pass, fail, total, ms) {
+  document.getElementById('sum-pass').textContent  = pass;
+  document.getElementById('sum-fail').textContent  = fail;
+  document.getElementById('sum-total').textContent = total;
+  if (ms !== undefined) document.getElementById('sum-time').textContent = ms < 1000 ? ms + 'ms' : (ms/1000).toFixed(1) + 's';
+}
+
+// ══════════════════════════════════════════
+// REPORT + HISTORY
+// ══════════════════════════════════════════
+const HISTORY_KEY = 'apex_runner_history';
+const MAX_RUNS    = 30;
+let currentDetailRun = null;
+let currentFilter    = 'all';
+
+// Called at end of runScripts — save and open detail immediately
+function finalizeReport(run) {
+  STATE.lastRun = run;
+  saveRun(run);
+  // Show badge
+  const badge = document.getElementById('nav-report-badge');
+  if (run.fail > 0) { badge.textContent = run.fail; badge.style.display = ''; }
+  else badge.style.display = 'none';
+  document.getElementById('view-report-btn').style.display = '';
+}
+
+function saveRun(run) {
+  const history = loadHistory();
+  // Avoid duplicates from re-runs in same session
+  const existing = history.findIndex(r => r.id === run.id);
+  if (existing >= 0) history.splice(existing, 1);
+  history.unshift(run);
+  if (history.length > MAX_RUNS) history.splice(MAX_RUNS);
+  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(history)); } catch(e) {}
+}
+
+function loadHistory() {
+  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch { return []; }
+}
+
+function clearHistory() {
+  if (!confirm('Clear all run history from this browser?')) return;
+  localStorage.removeItem(HISTORY_KEY);
+  STATE.lastRun = null;
+  document.getElementById('nav-report-badge').style.display = 'none';
+  renderHistoryList();
+}
+
+// ── HISTORY LIST ──
+function renderHistoryList() {
+  document.getElementById('report-history-section').style.display = '';
+  document.getElementById('report-detail').style.display = 'none';
+
+  const history = loadHistory();
+  const list    = document.getElementById('history-list');
+
+  if (history.length === 0) {
+    list.innerHTML = '<div class="empty"><div class="empty-icon">📋</div>No runs yet — go to the App tab and run some scripts first.</div>';
+    return;
+  }
+
+  list.innerHTML = history.map(run => {
+    const date    = new Date(run.ts).toLocaleString();
+    const org     = (run.org || '').replace(/https?:\/\//, '').split('/')[0];
+    const dur     = run.totalMs < 1000 ? run.totalMs + 'ms' : (run.totalMs / 1000).toFixed(1) + 's';
+    const hasFail = run.fail > 0;
+    const folders = (run.folders || []).slice(0, 4);
+    const moreFolders = (run.folders || []).length > 4 ? `+${run.folders.length - 4}` : '';
+    const folderPills = folders.map(f =>
+      `<span style="background:var(--surface2);color:var(--muted);padding:1px 7px;border-radius:4px;font-family:var(--mono);font-size:10px">${escHtml(f)}</span>`
+    ).join('') + (moreFolders ? `<span style="color:var(--muted);font-size:10px">${moreFolders} more</span>` : '');
+
+    return `<div onclick="openRunDetail('${run.id}')"
+      style="cursor:pointer;background:var(--surface);border:1px solid ${hasFail ? 'rgba(248,113,113,0.3)' : 'var(--border)'};
+             border-radius:var(--radius);padding:16px 20px;margin-bottom:8px;transition:border-color 0.15s"
+      onmouseover="this.style.borderColor='var(--border-bright)'"
+      onmouseout="this.style.borderColor='${hasFail ? 'rgba(248,113,113,0.3)' : 'var(--border)'}'">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-size:20px;flex-shrink:0">${hasFail ? '⚠️' : '✅'}</span>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">
+            <span style="font-family:var(--mono);font-size:12px;font-weight:500">${escHtml(org)}</span>
+            <span style="color:var(--muted);font-size:11px">${date}</span>
+            <span style="color:var(--muted);font-size:11px">· ${dur}</span>
+          </div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">${folderPills}</div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+          <span style="background:var(--green-dim);color:var(--green);padding:3px 10px;border-radius:6px;font-family:var(--mono);font-size:12px">${run.pass}✓</span>
+          ${hasFail ? `<span style="background:var(--red-dim);color:var(--red);padding:3px 10px;border-radius:6px;font-family:var(--mono);font-size:12px">${run.fail}✗</span>` : ''}
+          <span style="color:var(--muted);font-size:14px">›</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── RUN DETAIL ──
+function openRunDetail(id) {
+  const run = loadHistory().find(r => r.id === id);
+  if (!run) return;
+  currentDetailRun = run;
+  currentFilter    = 'all';
+
+  document.getElementById('report-history-section').style.display = 'none';
+  document.getElementById('report-detail').style.display = '';
+
+  const date = new Date(run.ts).toLocaleString();
+  const org  = (run.org || '').replace(/https?:\/\//, '').split('/')[0];
+  const dur  = run.totalMs < 1000 ? run.totalMs + 'ms' : (run.totalMs / 1000).toFixed(1) + 's';
+
+  document.getElementById('det-title').textContent = `${org} · ${date}`;
+  document.getElementById('det-meta').textContent  = `${run.total} scripts · ${dur} · ${run.source === 'zip' ? '📦 ZIP' : '🔗 GitHub'}`;
+  document.getElementById('det-total').textContent = run.total;
+  document.getElementById('det-pass').textContent  = run.pass;
+  document.getElementById('det-fail').textContent  = run.fail;
+  document.getElementById('det-time').textContent  = dur;
+
+  // Folder pills
+  const fbar = document.getElementById('det-folders-bar');
+  fbar.innerHTML = (run.folders || []).map(f =>
+    `<span style="background:var(--accent-dim);color:var(--accent);border:1px solid rgba(124,106,247,0.2);
+                  padding:3px 10px;border-radius:6px;font-family:var(--mono);font-size:11px">📁 ${escHtml(f)}</span>`
+  ).join('');
+
+  document.getElementById('nav-report-badge').style.display = 'none';
+  filterReport('all');
+}
+
+function showHistoryList() {
+  document.getElementById('report-history-section').style.display = '';
+  document.getElementById('report-detail').style.display = 'none';
+  renderHistoryList();
+}
+
+// ── FILTER TABLE ──
+function filterReport(filter) {
+  currentFilter = filter;
+  ['all', 'fail', 'pass'].forEach(f => {
+    const btn = document.getElementById('filter-' + f);
+    if (!btn) return;
+    btn.style.cssText = f === filter
+      ? 'background:var(--accent);color:#fff'
+      : 'background:var(--surface2);color:var(--muted)';
+  });
+
+  const run    = currentDetailRun;
+  if (!run) return;
+  const search = (document.getElementById('report-search')?.value || '').toLowerCase();
+
+  const tbody = document.getElementById('report-tbody');
+  const rows  = run.results.filter(r => {
+    if (filter === 'fail' && r.status !== 'fail') return false;
+    if (filter === 'pass' && r.status !== 'pass') return false;
+    if (search && !r.script.toLowerCase().includes(search) && !r.folder.toLowerCase().includes(search)) return false;
+    return true;
+  });
+
+  if (rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" style="padding:24px;text-align:center;color:var(--muted);font-size:12px">No scripts match the current filter</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map(r => {
+    const ok       = r.status === 'pass';
+    const rowBg    = ok ? 'transparent' : 'rgba(248,113,113,0.04)';
+    const errBadge = r.errorType
+      ? `<span style="background:var(--red-dim);color:var(--red);padding:1px 6px;border-radius:4px;font-size:10px;font-family:var(--mono);margin-right:6px">${escHtml(r.errorType)}</span>`
+      : '';
+    const errLine  = r.errorLine ? `<span style="color:var(--muted);font-size:11px"> · line ${r.errorLine}</span>` : '';
+    const errMsg   = r.errorMsg
+      ? `<div style="margin-top:2px">${errBadge}<span style="color:var(--red);font-size:12px">${escHtml(r.errorMsg)}</span>${errLine}</div>`
+      : '';
+
+    return `<tr style="background:${rowBg};border-top:1px solid var(--border)">
+      <td style="padding:10px 14px">${ok ? '✅' : '❌'}</td>
+      <td style="padding:10px 14px;font-family:var(--mono);font-size:11px;color:var(--muted)">${escHtml(r.folder)}</td>
+      <td style="padding:10px 14px;font-family:var(--mono);font-size:11px">${escHtml(r.script)}</td>
+      <td style="padding:10px 14px;font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap">${r.ms}ms</td>
+      <td style="padding:10px 14px">
+        ${ok ? '<span style="color:var(--green);font-size:12px">Success</span>' : errMsg}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function logRow(id, folder, name, status, message, ms) {
+  const icon = status === 'pass' ? '✅' : status === 'fail' ? '❌' : '⏳';
+  return `<div class="log-line" id="${id}">
+    <div class="log-status status-${status}">${icon}</div>
+    <div class="log-info">
+      <div class="log-script"><span style="color:var(--muted)">${escHtml(folder)}/</span>${escHtml(name)}</div>
+      <div class="log-output" onclick="this.classList.toggle('expanded')">${escHtml(message)}</div>
+    </div>
+    <div class="log-time">${ms ? ms + 'ms' : ''}</div>
+  </div>`;
+}
+
+function updateLogRow(id, status, message, ms) {
+  const row = document.getElementById(id);
+  if (!row) return;
+  row.querySelector('.log-status').innerHTML  = status === 'pass' ? '✅' : '❌';
+  row.querySelector('.log-status').className  = `log-status status-${status}`;
+  row.querySelector('.log-output').textContent = message;
+  row.querySelector('.log-time').textContent  = ms + 'ms';
+}
+
+function updateProgress(pct) {
+  document.getElementById('progress-fill').style.width = pct + '%';
+}
+
+// ══════════════════════════════════════════
+// EXPORT HTML REPORT
+// ══════════════════════════════════════════
+function exportReportHTML() {
+  if (!STATE.results.length) return;
+  const run = { results: STATE.results, org: STATE.sfInstance, ts: Date.now(), pass: STATE.results.filter(r=>r.status==='pass').length, fail: STATE.results.filter(r=>r.status==='fail').length, total: STATE.results.length };
+  exportReportHTMLFromRun(run);
+}
+
+function exportReportHTMLFromRun(run) {
+  if (!run) return;
+  const date = new Date(run.ts).toLocaleString();
+  const org  = (run.org || '').replace(/https?:\/\//, '').split('/')[0];
+
+  const rows = run.results.map(r => {
+    const ok   = r.status === 'pass';
+    const bg   = ok ? '#f0fdf4' : '#fef2f2';
+    const errLine = r.errorLine ? ' (line ' + r.errorLine + ')' : '';
+    const errTypeSpan = escHtml(r.errorType || '')
+      ? '<span style="background:#fee2e2;color:#991b1b;padding:1px 6px;border-radius:4px;font-size:11px;font-family:monospace">' + escHtml(r.errorType || '') + '</span> '
+      : '';
+    const errMsgSpan = '<span style="color:#dc2626;font-size:12px">' + escHtml(r.errorMsg || '') + errLine + '</span>';
+    const bodyDetails = r.body
+      ? '<details style="margin-top:6px"><summary style="font-size:11px;color:#666;cursor:pointer">View script source</summary>'
+        + '<pre style="font-size:10px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:4px;padding:8px;margin-top:4px;white-space:pre-wrap;max-height:200px;overflow:auto">'
+        + escHtml(r.body) + '</pre></details>'
+      : '';
+    const errCell = ok
+      ? '<span style="color:#16a34a">Success</span>'
+      : '<div style="margin-top:4px">' + errTypeSpan + errMsgSpan + '</div>' + bodyDetails;
+
+    return '<tr style="background:' + bg + '">'
+      + '<td>' + (ok ? '&#9989;' : '&#10060;') + '</td>'
+      + '<td style="font-family:monospace;font-size:11px;color:#666">' + escHtml(r.folder) + '</td>'
+      + '<td style="font-family:monospace;font-size:11px">' + escHtml(r.script) + '</td>'
+      + '<td style="font-family:monospace;font-size:11px;color:#666;white-space:nowrap">' + r.ms + 'ms</td>'
+      + '<td>' + errCell + '</td>'
+      + '</tr>';
+  }).join('');
+
+  const failBadge = run.fail > 0 ? '<span class="b bf">❌ ' + run.fail + ' failed</span>' : '';
+
+  const reportHtml = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Apex Run Report \xb7 ' + org + '</title>\n'
+    + '<style>\n'
+    + '  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:32px;color:#111;max-width:1100px;margin:0 auto}\n'
+    + '  h1{font-size:20px;margin-bottom:4px}p{color:#666;font-size:13px;margin:0 0 20px}\n'
+    + '  .badges{display:flex;gap:10px;margin:16px 0}\n'
+    + '  .b{padding:5px 16px;border-radius:20px;font-size:13px;font-weight:600}\n'
+    + '  .bp{background:#dcfce7;color:#15803d}.bf{background:#fee2e2;color:#dc2626}.bt{background:#f0f9ff;color:#0369a1}\n'
+    + '  table{border-collapse:collapse;width:100%}\n'
+    + '  th{text-align:left;padding:10px 14px;background:#f9fafb;border-bottom:2px solid #e5e7eb;font-size:11px;font-family:monospace;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.5px}\n'
+    + '  td{padding:10px 14px;border-bottom:1px solid #e5e7eb;font-size:13px;vertical-align:top}\n'
+    + '  tr:last-child td{border-bottom:none}\n'
+    + '  details summary{cursor:pointer}\n'
+    + '  @media print{.no-print{display:none}}\n'
+    + '</style></head><body>\n'
+    + '<h1>Apex Run Report</h1>\n'
+    + '<p>' + date + ' \xb7 <strong>' + org + '</strong></p>\n'
+    + '<div class="badges">\n'
+    + '  <span class="b bt">&#128202; ' + run.total + ' total</span>\n'
+    + '  <span class="b bp">&#9989; ' + run.pass + ' passed</span>\n'
+    + '  ' + failBadge + '\n'
+    + '</div>\n'
+    + '<table>\n'
+    + '  <tr><th></th><th>Folder</th><th>Script</th><th>Time</th><th>Result / Error</th></tr>\n'
+    + '  ' + rows + '\n'
+    + '</table>\n'
+    + '<p style="margin-top:24px;font-size:11px;color:#9ca3af">Generated by Apex Runner \xb7 ' + new Date().toISOString() + '</p>\n'
+    + '</body></html>';
+
+  const blob = new Blob([reportHtml], { type: 'text/html;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'apex-report-' + org + '-' + Date.now() + '.html';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+// ══════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════
+function sfFetch(path, opts = {}) {
+  return fetch(STATE.sfInstance + path, {
+    ...opts,
+    headers: { Authorization: 'Bearer ' + STATE.sfToken, 'Content-Type': 'application/json', ...(opts.headers||{}) },
+  });
+}
+
+function ghFetch(url, opts = {}) {
+  return fetch(url, {
+    ...opts,
+    headers: { Authorization: 'Bearer ' + STATE.ghToken, Accept: 'application/vnd.github+json', ...(opts.headers||{}) },
+  });
+}
+
+function showStatus(id, msg, type) {
+  const el = document.getElementById(id);
+  const c  = type === 'pass' ? 'var(--green)' : type === 'fail' ? 'var(--red)' : 'var(--amber)';
+  el.innerHTML = `<span style="color:${c};font-size:12px">${escHtml(String(msg))}</span>`;
+}
+
+function updateHeaderBadge(type, label) {
+  const container = document.getElementById('header-badges');
+  const id = 'badge-' + type;
+  let el = document.getElementById(id);
+  if (!el) { el = document.createElement('div'); el.id = id; container.appendChild(el); }
+  const cls = type === 'sf' ? 'badge badge-connected' : 'badge badge-connected';
+  el.className = cls;
+  el.innerHTML = `<span class="dot"></span>${label}`;
+}
+
+function toggleSetup() {
+  const el = document.getElementById('setup-details');
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// PKCE helpers
+function generateVerifier() {
+  const arr = new Uint8Array(32);
+  crypto.getRandomValues(arr);
+  return btoa(String.fromCharCode(...arr)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+}
+
+async function generateChallenge(v) {
+  const enc = new TextEncoder().encode(v);
+  const buf = await crypto.subtle.digest('SHA-256', enc);
+  return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+}
+
+init();
+</script>
+</body>
+</html>
