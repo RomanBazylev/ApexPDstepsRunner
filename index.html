@@ -407,15 +407,19 @@
       <!-- Token tab -->
       <div id="sf-method-token" style="display:none">
         <div class="field">
-          <label>Instance URL</label>
+          <label>Instance URL <span style="color:var(--muted);font-weight:normal">(скопируйте из адресной строки до .com)</span></label>
           <input id="sf-instance-token" placeholder="https://yourcompany.my.salesforce.com" value="">
         </div>
         <div class="field">
-          <label>Session ID / Access Token</label>
+          <label>Session ID</label>
           <input id="sf-manual-token" type="password" placeholder="00D..." autocomplete="off">
         </div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.8">
-          Получить токен: <code>sf org display --target-org alias</code>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.9;background:var(--surface2);padding:12px;border-radius:8px">
+          <strong style="color:var(--text)">Как получить Session ID (для SSO):</strong><br>
+          1. Откройте Salesforce в браузере (залогиньтесь)<br>
+          2. <strong>F12</strong> → вкладка <strong>Network</strong> → перезагрузите страницу (F5)<br>
+          3. Кликните на любой запрос → <strong>Headers</strong> → найдите <strong>Cookie</strong><br>
+          4. Скопируйте значение после <code style="background:var(--surface);padding:1px 5px;border-radius:3px">sid=</code> до ближайшей <code>;</code>
         </div>
         <div id="sf-status-token" class="mt8"></div>
         <div class="mt8">
@@ -1041,32 +1045,28 @@ function xmlEscape(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// Method 2: Manual token paste
+// Method 2: Manual token paste (no verification — just accept & proceed)
 async function connectSFToken() {
   saveConfig();
   const instance = document.getElementById('sf-instance-token').value.trim().replace(/\/$/, '');
   const token    = document.getElementById('sf-manual-token').value.trim();
-  if (!instance) { alert('Введите Instance URL'); return; }
-  if (!token) { alert('Вставьте Session ID / Access Token'); return; }
+  if (!instance) { alert('Введите Instance URL (скопируйте из адресной строки до .com)'); return; }
+  if (!token) { alert('Вставьте Session ID из Cookie (sid=...)'); return; }
 
   STATE.sfToken    = token;
   STATE.sfInstance = instance;
   sessionStorage.setItem('sf_token', token);
   sessionStorage.setItem('sf_instance', instance);
 
-  showStatus('sf-status-token', '⏳ Проверяю токен…', 'warn');
+  // Try to get user info, but don't fail if CORS blocks it
+  showStatus('sf-status-token', '⏳ Подключаюсь…', 'warn');
   try {
     await fetchSFUser();
-    if (STATE.sfUser) {
-      onSFConnected();
-    } else {
-      showStatus('sf-status-token', '❌ Токен не работает', 'fail');
-      STATE.sfToken = null;
-    }
   } catch(e) {
-    showStatus('sf-status-token', '❌ ' + e.message, 'fail');
-    STATE.sfToken = null;
+    // CORS may block userinfo — that's OK, the token may still work for API calls
+    STATE.sfUser = '(сессия)';
   }
+  onSFConnected();
 }
 
 // Method 3: OAuth Implicit flow (requires Connected App)
