@@ -368,10 +368,10 @@
         <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--green-dim);border:1px solid rgba(61,214,140,0.2);border-radius:8px">
           <span style="color:var(--green);font-size:18px">✓</span>
           <div style="flex:1">
-            <div style="font-size:13px;color:var(--green);font-weight:500" id="sf-connected-label">Подключено</div>
+            <div style="font-size:13px;color:var(--green);font-weight:500" id="sf-connected-label">Connected</div>
             <div style="font-size:11px;color:var(--muted)" id="sf-connected-instance"></div>
           </div>
-          <button class="btn btn-sm btn-danger" onclick="disconnectSF()">Отключиться</button>
+          <button class="btn btn-sm btn-danger" onclick="disconnectSF()">Disconnect</button>
         </div>
       </div>
 
@@ -388,35 +388,39 @@
         <div id="sf-method-oauth">
           <div class="grid2">
             <div class="field">
-              <label>Instance URL <span style="color:var(--muted);font-weight:normal">(sandbox или production)</span></label>
+              <label>Instance URL <span style="color:var(--muted);font-weight:normal">(sandbox or production)</span></label>
               <input id="sf-instance-oauth" placeholder="https://yourcompany--sandbox.sandbox.my.salesforce.com" value="">
             </div>
             <div class="field">
-              <label>Consumer Key <span style="color:var(--muted);font-weight:normal">(из Connected App)</span></label>
+              <label>Consumer Key <span style="color:var(--muted);font-weight:normal">(from Connected App)</span></label>
               <input id="sf-client-id" placeholder="3MVG9..." value="">
             </div>
           </div>
           <details style="margin-bottom:12px">
-            <summary style="font-size:11px;color:var(--muted);cursor:pointer">📖 Как создать Connected App (попросите админа, 1 мин)</summary>
+            <summary style="font-size:11px;color:var(--muted);cursor:pointer">📖 How to create a Connected App (ask your admin, 1 min)</summary>
             <div style="font-size:11px;color:var(--muted);line-height:1.9;background:var(--surface2);padding:12px;border-radius:8px;margin-top:6px">
-              <strong>Скопируйте это админу:</strong><br><br>
+              <strong>Send these instructions to your Salesforce admin:</strong><br><br>
+              <strong style="color:var(--amber)">⚠️ Required permissions for the admin:</strong><br>
+              &nbsp;&nbsp;• For standard Connected Apps: <code>Manage Connected Apps</code> permission<br>
+              &nbsp;&nbsp;• For External Client Apps: <code>View External Client App Consumer Secrets in Metadata</code>,<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;<code>View all External Client Apps, view their settings, and edit their policies</code><br><br>
+              <strong>Steps to create the app:</strong><br>
               1. Setup → App Manager → <strong>New Connected App</strong><br>
-              2. Заполните:<br>
+              2. Fill in:<br>
               &nbsp;&nbsp;• Connected App Name: <code>Apex Runner</code><br>
-              &nbsp;&nbsp;• Contact Email: ваш email<br>
+              &nbsp;&nbsp;• Contact Email: your email<br>
               &nbsp;&nbsp;• ✅ Enable OAuth Settings<br>
               &nbsp;&nbsp;• Callback URL: <code id="sf-callback-display"></code><br>
-              &nbsp;&nbsp;• Selected OAuth Scopes: <strong>Manage user data via APIs (api)</strong><br>
-              &nbsp;&nbsp;• ✅ Require Proof Key for Code Exchange (PKCE)<br>
-              &nbsp;&nbsp;• ❌ Require Secret for Web Server Flow — <strong>снять галку!</strong><br>
-              3. Save → подождите 2–10 мин<br>
-              4. Скопируйте <strong>Consumer Key</strong> и вставьте его выше<br><br>
-              <strong>Также добавьте CORS:</strong><br>
+              &nbsp;&nbsp;• Selected OAuth Scopes: <strong>Full access (full)</strong> or at minimum <strong>Manage user data via APIs (api)</strong><br>
+              &nbsp;&nbsp;• ❌ Require Secret for Web Server Flow — <strong>uncheck this!</strong><br>
+              3. Save → wait 2–10 min for propagation<br>
+              4. Copy the <strong>Consumer Key</strong> and paste it above<br><br>
+              <strong>Also add CORS origin:</strong><br>
               Setup → Security → CORS → New → Origin URL: <code id="sf-cors-origin"></code>
             </div>
           </details>
           <div style="background:var(--green-dim);border:1px solid rgba(61,214,140,0.15);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:11px;color:var(--green)">
-            ✅ Рекомендуемый способ. Работает с SSO. Прокси <strong>не нужен</strong>. Данные идут напрямую в Salesforce.
+            ✅ Recommended method. Works with SSO. No proxy <strong>needed</strong>. Data goes directly to Salesforce.
           </div>
           <div id="sf-status-oauth" class="mt8"></div>
           <div class="mt8">
@@ -427,7 +431,7 @@
         <!-- Session ID tab (fallback — needs CORS proxy) -->
         <div id="sf-method-token" style="display:none">
           <div class="field">
-            <label>Instance URL <span style="color:var(--muted);font-weight:normal">(из адресной строки до .com)</span></label>
+            <label>Instance URL <span style="color:var(--muted);font-weight:normal">(from browser address bar up to .com)</span></label>
             <input id="sf-instance-token" placeholder="https://yourcompany.my.salesforce.com" value="">
           </div>
           <div class="field">
@@ -435,18 +439,18 @@
             <input id="sf-manual-token" type="password" placeholder="00D..." autocomplete="off">
           </div>
           <div class="field">
-            <label>CORS Proxy URL <span style="color:var(--amber)">(обязательно для Session ID)</span></label>
+            <label>CORS Proxy URL <span style="color:var(--amber)">(required for Session ID)</span></label>
             <input id="sf-cors-proxy" placeholder="https://your-worker.workers.dev" value="">
           </div>
           <details style="margin-bottom:12px">
-            <summary style="font-size:11px;color:var(--muted);cursor:pointer">📖 Как получить Session ID + настроить прокси</summary>
+            <summary style="font-size:11px;color:var(--muted);cursor:pointer">📖 How to get Session ID + set up a proxy</summary>
             <div style="font-size:11px;color:var(--muted);line-height:1.9;background:var(--surface2);padding:12px;border-radius:8px;margin-top:6px">
               <strong>Session ID:</strong><br>
-              1. Откройте Salesforce → <strong>F12</strong> → Network → перезагрузить (F5)<br>
-              2. Клик на запрос → Headers → Cookie → значение <code>sid=</code><br><br>
-              <strong>CORS Proxy (Cloudflare Worker, бесплатно):</strong><br>
+              1. Open Salesforce → <strong>F12</strong> → Network → reload (F5)<br>
+              2. Click any request → Headers → Cookie → copy the <code>sid=</code> value<br><br>
+              <strong>CORS Proxy (Cloudflare Worker, free):</strong><br>
               1. <code>dash.cloudflare.com</code> → Workers & Pages → Create Worker<br>
-              2. Замените код на:<br>
+              2. Replace the code with:<br>
               <div style="background:var(--surface);padding:8px;border-radius:4px;margin:6px 0;font-family:var(--mono);font-size:10px;white-space:pre;overflow-x:auto">export default {
   async fetch(request) {
     const cors = {
@@ -473,15 +477,15 @@
     return resp;
   }
 };</div>
-              3. Deploy → скопируйте URL воркера сюда
+              3. Deploy → copy the worker URL here
             </div>
           </details>
           <div style="background:var(--amber-dim);border:1px solid rgba(251,191,36,0.15);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:11px;color:var(--amber)">
-            ⚠️ Запасной способ. Нужен CORS proxy. Используйте если нет Connected App.
+            ⚠️ Fallback method. Requires a CORS proxy. Use if you don't have a Connected App.
           </div>
           <div id="sf-status-token" class="mt8"></div>
           <div class="mt8">
-            <button class="btn btn-sf" id="sf-btn-token" onclick="connectSFToken()">Подключиться</button>
+            <button class="btn btn-sf" id="sf-btn-token" onclick="connectSFToken()">Connect</button>
           </div>
         </div>
       </div>
@@ -498,7 +502,7 @@
     <div style="display:none" id="gh-btn"></div>
 
     <div class="flex flex-end mt8" id="connect-next-wrap" style="display:none!important">
-      <button class="btn btn-primary" onclick="goToStep2()">Выбрать скрипты →</button>
+      <button class="btn btn-primary" onclick="goToStep2()">Select scripts →</button>
     </div>
   </div>
 
@@ -507,17 +511,17 @@
 
     <!-- Source selector tabs -->
     <div class="card" style="padding:20px">
-      <div class="card-title"><span>02</span>Источник скриптов</div>
+      <div class="card-title"><span>02</span>Script source</div>
       <div style="display:flex;gap:12px">
 
         <div id="tab-zip" onclick="switchSource('zip')" style="flex:1;padding:16px;border-radius:8px;border:2px solid var(--accent);background:var(--accent-dim);cursor:pointer;transition:all 0.15s">
-          <div style="font-family:var(--mono);font-size:13px;color:var(--accent);margin-bottom:6px">📦 ZIP архив</div>
-          <div style="font-size:12px;color:var(--muted);line-height:1.6">Скачайте репо как архив из GitHub и загрузите сюда. Работает без токена.</div>
+          <div style="font-family:var(--mono);font-size:13px;color:var(--accent);margin-bottom:6px">📦 ZIP archive</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.6">Download the repo as a ZIP from GitHub and upload it here. No token needed.</div>
         </div>
 
         <div id="tab-git" onclick="switchSource('git')" style="flex:1;padding:16px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;transition:all 0.15s">
-          <div style="font-family:var(--mono);font-size:13px;color:var(--muted);margin-bottom:6px">🔗 GitHub репо</div>
-          <div style="font-size:12px;color:var(--muted);line-height:1.6">Читает скрипты напрямую из репо. Нужен GitHub токен.</div>
+          <div style="font-family:var(--mono);font-size:13px;color:var(--muted);margin-bottom:6px">🔗 GitHub repo</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.6">Reads scripts directly from a repo. Requires a GitHub token.</div>
         </div>
 
       </div>
@@ -526,11 +530,11 @@
     <!-- ZIP MODE -->
     <div id="source-zip">
       <div class="card">
-        <div class="card-title"><span>↓</span>Как скачать архив из GitHub</div>
+        <div class="card-title"><span>↓</span>How to download a ZIP from GitHub</div>
         <div style="font-size:12px;color:var(--muted);line-height:2">
-          1. Откройте репо со скриптами на GitHub<br>
-          2. Нажмите зелёную кнопку <strong style="color:var(--text)">Code</strong> → <strong style="color:var(--text)">Download ZIP</strong><br>
-          3. Загрузите скачанный файл ниже
+          1. Open the scripts repo on GitHub<br>
+          2. Click the green <strong style="color:var(--text)">Code</strong> button → <strong style="color:var(--text)">Download ZIP</strong><br>
+          3. Upload the downloaded file below
         </div>
         <hr class="divider">
         <div id="zip-drop-zone" style="border:2px dashed var(--border);border-radius:8px;padding:32px;text-align:center;cursor:pointer;transition:all 0.15s"
@@ -539,7 +543,7 @@
           ondragleave="this.style.borderColor='var(--border)'"
           ondrop="handleZipDrop(event)">
           <div style="font-size:28px;margin-bottom:8px;opacity:0.4">📦</div>
-          <div style="font-size:13px;color:var(--muted)">Перетащите ZIP сюда или нажмите для выбора</div>
+          <div style="font-size:13px;color:var(--muted)">Drag & drop a ZIP here or click to browse</div>
           <div style="font-size:11px;color:var(--muted);margin-top:4px">repository-main.zip</div>
         </div>
         <input type="file" id="zip-input" accept=".zip" style="display:none" onchange="handleZipFile(this.files[0])">
@@ -547,19 +551,19 @@
       </div>
 
       <div class="card" id="zip-folders-card" style="display:none">
-        <div class="card-title"><span>03</span>Выберите папки</div>
+        <div class="card-title"><span>03</span>Select folders</div>
         <div class="field">
-          <label>Base path внутри архива <span style="color:var(--muted);font-weight:normal">(оставьте пустым чтобы видеть всё)</span></label>
-          <input id="zip-base-path" placeholder="оставьте пустым или scripts/apex/..." value="" oninput="filterZipFolders()">
+          <label>Base path inside archive <span style="color:var(--muted);font-weight:normal">(leave empty to see everything)</span></label>
+          <input id="zip-base-path" placeholder="leave empty or scripts/apex/..." value="" oninput="filterZipFolders()">
         </div>
         <div id="zip-folder-list" class="file-tree"></div>
         <hr class="divider">
         <div class="flex gap8 flex-end" style="flex-wrap:wrap">
-          <button class="btn" style="background:var(--surface2);color:var(--text)" onclick="goToStep1()">← Назад</button>
+          <button class="btn" style="background:var(--surface2);color:var(--text)" onclick="goToStep1()">← Back</button>
           <div style="flex:1"></div>
-          <button class="btn btn-sm" style="background:var(--surface2);color:var(--muted)" onclick="selectAll(true)">Выбрать все</button>
-          <button class="btn btn-sm" style="background:var(--surface2);color:var(--muted)" onclick="selectAll(false)">Снять все</button>
-          <button class="btn btn-primary" onclick="goToStep3()">Запустить →</button>
+          <button class="btn btn-sm" style="background:var(--surface2);color:var(--muted)" onclick="selectAll(true)">Select all</button>
+          <button class="btn btn-sm" style="background:var(--surface2);color:var(--muted)" onclick="selectAll(false)">Deselect all</button>
+          <button class="btn btn-primary" onclick="goToStep3()">Run →</button>
         </div>
       </div>
     </div>
@@ -567,28 +571,28 @@
     <!-- GITHUB MODE -->
     <div id="source-git" style="display:none">
       <div class="card">
-        <div class="card-title"><span>GH</span>GitHub токен</div>
+        <div class="card-title"><span>GH</span>GitHub token</div>
         <div class="field">
-          <label>Personal Access Token <span style="color:var(--muted)">(сохраняется в localStorage)</span></label>
+          <label>Personal Access Token <span style="color:var(--muted)">(saved in localStorage)</span></label>
           <div style="display:flex;gap:8px">
-            <input id="gh-pat-input" type="password" placeholder="ghp_... или github_pat_..." autocomplete="off" style="flex:1">
-            <button class="btn btn-gh btn-sm" onclick="saveGHToken()">Сохранить</button>
+            <input id="gh-pat-input" type="password" placeholder="ghp_... or github_pat_..." autocomplete="off" style="flex:1">
+            <button class="btn btn-gh btn-sm" onclick="saveGHToken()">Save</button>
           </div>
         </div>
         <div id="gh-token-status" class="mt8"></div>
         <div class="text-muted mt8" style="line-height:1.7">
-          Нужен scope <code style="background:var(--surface2);padding:1px 5px;border-radius:4px;font-family:var(--mono);font-size:11px">repo</code> (classic) или Contents: Read-only (fine-grained).<br>
-          Если org использует SSO: после создания токена нажмите <strong style="color:var(--text)">Configure SSO → Authorize</strong>.
+          Requires scope <code style="background:var(--surface2);padding:1px 5px;border-radius:4px;font-family:var(--mono);font-size:11px">repo</code> (classic) or Contents: Read-only (fine-grained).<br>
+          If your org uses SSO: after creating the token, click <strong style="color:var(--text)">Configure SSO → Authorize</strong>.
         </div>
       </div>
 
       <div class="card">
-        <div class="card-title"><span>📁</span>Репозиторий</div>
+        <div class="card-title"><span>📁</span>Repository</div>
         <div class="grid2">
           <div class="field">
             <label>Repository</label>
             <select id="repo-select" onchange="loadFolders()">
-              <option value="">— выберите репо —</option>
+              <option value="">— select a repo —</option>
             </select>
           </div>
           <div class="field">
@@ -597,24 +601,24 @@
           </div>
         </div>
         <div class="field">
-          <label>Расширения файлов</label>
+          <label>File extensions</label>
           <input id="file-exts" placeholder=".txt, .apex" value=".txt, .apex">
         </div>
-        <button class="btn btn-sm" style="background:var(--surface2);color:var(--text)" onclick="loadRepos()">↻ Загрузить репозитории</button>
+        <button class="btn btn-sm" style="background:var(--surface2);color:var(--text)" onclick="loadRepos()">↻ Load repositories</button>
       </div>
 
       <div class="card" id="folders-card">
-        <div class="card-title"><span>03</span>Выберите папки</div>
+        <div class="card-title"><span>03</span>Select folders</div>
         <div id="folder-list">
-          <div class="empty"><div class="empty-icon">📁</div>Выберите репо выше</div>
+          <div class="empty"><div class="empty-icon">📁</div>Select a repo above</div>
         </div>
         <hr class="divider">
         <div class="flex gap8 flex-end">
-          <button class="btn" style="background:var(--surface2);color:var(--text)" onclick="goToStep1()">← Назад</button>
+          <button class="btn" style="background:var(--surface2);color:var(--text)" onclick="goToStep1()">← Back</button>
           <div style="flex:1"></div>
-          <button class="btn btn-sm" style="background:var(--surface2);color:var(--muted)" onclick="selectAll(true)">Выбрать все</button>
-          <button class="btn btn-sm" style="background:var(--surface2);color:var(--muted)" onclick="selectAll(false)">Снять все</button>
-          <button class="btn btn-primary" onclick="goToStep3()">Запустить →</button>
+          <button class="btn btn-sm" style="background:var(--surface2);color:var(--muted)" onclick="selectAll(true)">Select all</button>
+          <button class="btn btn-sm" style="background:var(--surface2);color:var(--muted)" onclick="selectAll(false)">Deselect all</button>
+          <button class="btn btn-primary" onclick="goToStep3()">Run →</button>
         </div>
       </div>
     </div>
@@ -997,7 +1001,7 @@ function saveConfig() {
   }));
 }
 
-function ghTab() {} // stub — больше не нужен
+function ghTab() {} // stub — no longer needed
 
 // ══════════════════════════════════════════
 // SALESFORCE AUTH
@@ -1030,8 +1034,8 @@ function connectSFOAuth() {
   saveConfig();
   const clientId = document.getElementById('sf-client-id').value.trim();
   const instance = document.getElementById('sf-instance-oauth').value.trim().replace(/\/$/, '');
-  if (!instance) { alert('Введите Instance URL вашей org'); return; }
-  if (!clientId) { alert('Введите Consumer Key из Connected App'); return; }
+  if (!instance) { alert('Enter your org Instance URL'); return; }
+  if (!clientId) { alert('Enter the Consumer Key from your Connected App'); return; }
 
   // Save instance for after redirect
   sessionStorage.setItem('sf_instance_pending', instance);
@@ -1043,7 +1047,7 @@ function connectSFOAuth() {
     + `&redirect_uri=${encodeURIComponent(redirect)}`
     + `&scope=${encodeURIComponent('api')}`;
 
-  showStatus('sf-status-oauth', '⏳ Перенаправляю на Salesforce…', 'warn');
+  showStatus('sf-status-oauth', '⏳ Redirecting to Salesforce…', 'warn');
   location.href = url;
 }
 
@@ -1073,7 +1077,7 @@ function handleOAuthHashCallback() {
   sessionStorage.removeItem('sf_instance_pending');
 
   fetchSFUser().catch(() => { STATE.sfUser = '(OAuth)'; }).then(() => {
-    showStatus('sf-status-oauth', '✅ Подключено как ' + (STATE.sfUser || 'OAuth'), 'pass');
+    showStatus('sf-status-oauth', '✅ Connected as ' + (STATE.sfUser || 'OAuth'), 'pass');
     onSFConnected();
   });
 }
@@ -1084,9 +1088,9 @@ async function connectSFToken() {
   const instance = document.getElementById('sf-instance-token').value.trim().replace(/\/$/, '');
   const token    = document.getElementById('sf-manual-token').value.trim();
   const proxy    = (document.getElementById('sf-cors-proxy')?.value || '').trim().replace(/\/$/, '');
-  if (!instance) { alert('Введите Instance URL'); return; }
-  if (!token) { alert('Вставьте Session ID'); return; }
-  if (!proxy) { alert('Для Session ID обязательно нужен CORS Proxy URL — заполните поле выше'); return; }
+  if (!instance) { alert('Enter Instance URL'); return; }
+  if (!token) { alert('Paste your Session ID'); return; }
+  if (!proxy) { alert('Session ID requires a CORS Proxy URL — fill in the field above'); return; }
 
   STATE.sfToken    = token;
   STATE.sfInstance = instance;
@@ -1095,8 +1099,8 @@ async function connectSFToken() {
 
   const btn = document.getElementById('sf-btn-token');
   btn.disabled = true;
-  btn.textContent = '⏳ Проверяю…';
-  showStatus('sf-status-token', '⏳ Проверяю подключение…', 'warn');
+  btn.textContent = '⏳ Verifying…';
+  showStatus('sf-status-token', '⏳ Verifying connection…', 'warn');
 
   try {
     const res = await sfFetch('/services/data/');
@@ -1107,8 +1111,8 @@ async function connectSFToken() {
     const data = await res.json();
     if (!Array.isArray(data)) throw new Error('Unexpected response');
 
-    try { await fetchSFUser(); } catch(e) { STATE.sfUser = '(сессия)'; }
-    showStatus('sf-status-token', '✅ Подключено', 'pass');
+    try { await fetchSFUser(); } catch(e) { STATE.sfUser = '(session)'; }
+    showStatus('sf-status-token', '✅ Connected', 'pass');
     onSFConnected();
   } catch(e) {
     STATE.sfToken = null;
@@ -1116,11 +1120,11 @@ async function connectSFToken() {
     sessionStorage.removeItem('sf_token');
     sessionStorage.removeItem('sf_instance');
     let msg = e.message;
-    if (msg === 'Failed to fetch') msg = 'Не удалось подключиться — проверьте Proxy URL, Instance URL и Session ID';
+    if (msg === 'Failed to fetch') msg = 'Could not connect — check your Proxy URL, Instance URL and Session ID';
     showStatus('sf-status-token', '❌ ' + msg, 'fail');
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Подключиться';
+    btn.textContent = 'Connect';
   }
 }
 
@@ -1139,7 +1143,7 @@ function onSFConnected(silent) {
   // Show connected state, hide login form
   document.getElementById('sf-connected-state').style.display = '';
   document.getElementById('sf-login-form').style.display = 'none';
-  document.getElementById('sf-connected-label').textContent = `Подключено как ${user}`;
+  document.getElementById('sf-connected-label').textContent = `Connected as ${user}`;
   document.getElementById('sf-connected-instance').textContent = inst;
   updateHeaderBadge('sf', inst);
   if (!silent) {
@@ -1345,7 +1349,7 @@ function switchSource(mode) {
 
   if (mode === 'git' && !STATE.ghToken) {
     const saved = localStorage.getItem('gh_pat');
-    if (saved) { STATE.ghToken = saved; showGHTokenStatus('✓ Токен загружен из localStorage', 'pass'); }
+    if (saved) { STATE.ghToken = saved; showGHTokenStatus('✓ Token loaded from localStorage', 'pass'); }
   }
   if (mode === 'git' && STATE.ghToken) loadRepos();
 }
@@ -1356,7 +1360,7 @@ function saveGHToken() {
   if (!pat) return;
   STATE.ghToken = pat;
   localStorage.setItem('gh_pat', pat);
-  showGHTokenStatus('✓ Сохранено', 'pass');
+  showGHTokenStatus('✓ Saved', 'pass');
   loadRepos();
 }
 
@@ -1376,9 +1380,9 @@ async function handleZipDrop(e) {
 
 async function handleZipFile(file) {
   if (!file || !file.name.endsWith('.zip')) {
-    showStatus('zip-status', '❌ Нужен .zip файл', 'fail'); return;
+    showStatus('zip-status', '❌ Please select a .zip file', 'fail'); return;
   }
-  showStatus('zip-status', '⏳ Читаю архив…', 'warn');
+  showStatus('zip-status', '⏳ Reading archive…', 'warn');
 
   try {
     const JSZip = await loadJSZip();
@@ -1398,10 +1402,10 @@ async function handleZipFile(file) {
 
     const count = Object.keys(zipFiles).length;
     if (count === 0) {
-      showStatus('zip-status', `❌ Скриптов не найдено (ищем ${exts.join(', ')})`, 'fail'); return;
+      showStatus('zip-status', `❌ No scripts found (looking for ${exts.join(', ')})`, 'fail'); return;
     }
 
-    showStatus('zip-status', `✅ Найдено ${count} скриптов в архиве`, 'pass');
+    showStatus('zip-status', `✅ Found ${count} scripts in archive`, 'pass');
 
     // Auto-detect base path: try CONFIG default, then empty
     const bpEl = document.getElementById('zip-base-path');
@@ -1416,7 +1420,7 @@ async function handleZipFile(file) {
     document.getElementById('zip-folders-card').style.display = '';
     document.getElementById('zip-drop-zone').style.borderColor = 'var(--green)';
   } catch(e) {
-    showStatus('zip-status', '❌ Ошибка: ' + e.message, 'fail');
+    showStatus('zip-status', '❌ Error: ' + e.message, 'fail');
   }
 }
 
@@ -1453,7 +1457,7 @@ function renderZipFolders() {
 
     const rel    = basePath ? stripped.slice(basePath.length).replace(/^\//, '') : stripped;
     const rparts = rel.split('/');
-    const folder = rparts.length > 1 ? rparts.slice(0, -1).join('/') : '(корень)';
+    const folder = rparts.length > 1 ? rparts.slice(0, -1).join('/') : '(root)';
     const fname  = rparts[rparts.length - 1];
     if (!fname) continue;
     if (!exts.some(ext => fname.toLowerCase().endsWith(ext))) continue;
@@ -1463,7 +1467,7 @@ function renderZipFolders() {
   }
 
   if (Object.keys(groups).length === 0) {
-    list.innerHTML = '<div class="empty">Нет скриптов по этому пути. Очистите base path.</div>';
+    list.innerHTML = '<div class="empty">No scripts found at this path. Clear the base path.</div>';
     return false;
   }
 
@@ -1485,7 +1489,7 @@ function renderZipFolders() {
         <input type="checkbox" class="folder-cb" data-folder="${safeAttr}" ${allEmpty ? 'disabled' : 'checked'} onclick="event.stopPropagation();syncFolder(this)">
         <span style="opacity:0.6;font-size:14px">📁</span>
         <span class="folder-name">${escHtml(folder)}</span>
-        <span class="folder-count">${nonEmpty.length} из ${files.length}</span>
+        <span class="folder-count">${nonEmpty.length} of ${files.length}</span>
         <span class="folder-chevron">▾</span>
       </div>
       <div class="folder-scripts">
@@ -1498,7 +1502,7 @@ function renderZipFolders() {
               data-zip-path="${escHtml(f.fullPath)}" data-source="zip"
               ${empty ? 'disabled' : 'checked'}>
             <span class="script-name">${escHtml(f.name)}</span>
-            ${empty ? '<span class="script-badge script-badge-empty">пустой</span>' : ''}
+            ${empty ? '<span class="script-badge script-badge-empty">empty</span>' : ''}
           </div>`;
         }).join('')}
       </div>`;
@@ -1507,7 +1511,7 @@ function renderZipFolders() {
   // Summary line
   const summary = document.createElement('div');
   summary.className = 'file-tree-summary';
-  summary.textContent = `${folders.length} папок · ${totalEnabled} скриптов${totalFiles !== totalEnabled ? ` · ${totalFiles - totalEnabled} пустых` : ''}`;
+  summary.textContent = `${folders.length} folders · ${totalEnabled} scripts${totalFiles !== totalEnabled ? ` · ${totalFiles - totalEnabled} empty` : ''}`;
   list.insertBefore(summary, list.firstChild);
   return totalFiles > 0;
 }
@@ -1526,17 +1530,17 @@ async function loadJSZip() {
 // ── COLLECT SELECTED (both sources) ──
 async function loadRepos() {
   const sel = document.getElementById('repo-select');
-  sel.innerHTML = '<option>Загрузка…</option>';
+  sel.innerHTML = '<option>Loading…</option>';
   try {
     const res   = await ghFetch('https://api.github.com/user/repos?per_page=100&sort=updated');
     const repos = await res.json();
     STATE.repos = repos;
-    sel.innerHTML = '<option value="">— выберите репо —</option>' +
+    sel.innerHTML = '<option value="">— select a repo —</option>' +
       repos.map(r => `<option value="${r.full_name}" ${r.full_name === CONFIG.DEFAULT_REPO ? 'selected' : ''}>${r.full_name}</option>`).join('');
     // Auto-load folders if default repo is set
     if (CONFIG.DEFAULT_REPO) loadFolders();
   } catch(e) {
-    sel.innerHTML = '<option>Ошибка загрузки репозиториев</option>';
+    sel.innerHTML = '<option>Error loading repositories</option>';
   }
 }
 
@@ -1585,7 +1589,7 @@ async function loadFolders() {
           <input type="checkbox" class="folder-cb" data-folder="${safeFolderAttr}" checked onclick="event.stopPropagation();syncFolder(this)">
           <span style="opacity:0.6;font-size:14px">📁</span>
           <span class="folder-name">${escHtml(folder)}</span>
-          <span class="folder-count">${files.length} скриптов</span>
+          <span class="folder-count">${files.length} scripts</span>
           <span class="folder-chevron">▾</span>
         </div>
         <div class="folder-scripts">
@@ -1603,7 +1607,7 @@ async function loadFolders() {
     // Summary line
     const summary = document.createElement('div');
     summary.className = 'file-tree-summary';
-    summary.textContent = `${folders.length} папок · ${totalFiles} скриптов`;
+    summary.textContent = `${folders.length} folders · ${totalFiles} scripts`;
     tree.insertBefore(summary, tree.firstChild);
 
     list.appendChild(tree);
@@ -1749,8 +1753,8 @@ async function runScripts() {
       if (msg === 'Failed to fetch') {
         const proxy = (document.getElementById('sf-cors-proxy')?.value || '').trim();
         msg = proxy
-          ? 'CORS/Network error — проверьте URL прокси и Instance URL'
-          : 'CORS error — укажите CORS Proxy URL в секции Connect (шаг 1)';
+          ? 'CORS/Network error — check your proxy URL and Instance URL'
+          : 'CORS error — set a CORS Proxy URL in the Connect section (step 1)';
       }
       resultEntry = { folder: s.folder, script: s.name, status: 'fail', ms, errorMsg: msg, errorLine: null, errorType: 'Error', sfLog: '', body: '' };
       updateLogRow(rowId, 'fail', msg, ms);
