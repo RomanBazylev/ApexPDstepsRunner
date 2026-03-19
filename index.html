@@ -70,11 +70,12 @@
   .app { display: flex; flex-direction: column; min-height: 100vh; }
   header {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 16px 32px;
+    padding: 12px 32px;
     border-bottom: 1px solid var(--border);
     background: var(--header-bg);
     backdrop-filter: blur(12px);
     position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 1px 8px rgba(0,0,0,0.06);
   }
   .theme-toggle {
     background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
@@ -82,8 +83,9 @@
     transition: all 0.15s; color: var(--text);
   }
   .theme-toggle:hover { border-color: var(--accent); }
-  .logo { font-family: var(--mono); font-size: 15px; letter-spacing: -0.5px; }
+  .logo { display: flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 15px; letter-spacing: -0.5px; text-decoration: none; color: var(--text); }
   .logo span { color: var(--accent); }
+  .logo-icon { width: 28px; height: 28px; flex-shrink: 0; }
   .badges { display: flex; gap: 8px; }
   main { flex: 1; padding: 40px 32px; max-width: 900px; margin: 0 auto; width: 100%; }
 
@@ -293,14 +295,14 @@
   @media(max-width: 600px) { .grid2 { grid-template-columns: 1fr; } main { padding: 20px 16px; } header { padding: 12px 16px; } }
 
   /* ── NAV TABS ── */
-  .nav-tabs { display: flex; gap: 4px; }
+  .nav-tabs { display: flex; gap: 2px; background: var(--surface2); border-radius: 8px; padding: 3px; }
   .nav-tab {
-    padding: 6px 14px; border-radius: 6px; font-size: 12px;
+    padding: 7px 16px; border-radius: 6px; font-size: 12px; font-weight: 500;
     font-family: var(--mono); cursor: pointer; border: none;
     background: transparent; color: var(--muted); transition: all 0.15s;
   }
-  .nav-tab:hover { color: var(--text); background: var(--surface2); }
-  .nav-tab.active { background: var(--accent-dim); color: var(--accent); }
+  .nav-tab:hover { color: var(--text); background: rgba(124,106,247,0.06); }
+  .nav-tab.active { background: var(--surface); color: var(--accent); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
 
   /* ── DOCS ── */
   .docs-body { line-height: 1.8; font-size: 13px; color: var(--text); }
@@ -333,7 +335,15 @@
 <div class="app">
 
 <header>
-  <div class="logo">apex<span>.</span>runner</div>
+  <div class="logo">
+    <svg class="logo-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="32" height="32" rx="8" fill="var(--accent)"/>
+      <path d="M8 22V10l8 4v8l-8-4z" fill="#fff" opacity="0.9"/>
+      <path d="M16 14l8-4v12l-8 4V14z" fill="#fff" opacity="0.6"/>
+      <path d="M8 10l8-4 8 4-8 4-8-4z" fill="#fff"/>
+    </svg>
+    apex<span>.</span>runner
+  </div>
   <nav class="nav-tabs">
     <button class="nav-tab active" id="nav-app" onclick="navTo('app')">App</button>
     <button class="nav-tab" id="nav-report" onclick="navTo('report')">Report <span id="nav-report-badge" style="display:none;background:var(--red);color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;margin-left:4px"></span></button>
