@@ -290,6 +290,21 @@
   .divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
   .visually-hidden { display: none; }
 
+  /* ── EXPORT DROPDOWN ── */
+  .export-dropdown { display: inline-block; }
+  .export-menu {
+    display: none; flex-direction: column; position: absolute; right: 0; top: calc(100% + 4px);
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12); z-index: 50; min-width: 170px; overflow: hidden;
+  }
+  .export-menu button {
+    display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px 14px;
+    border: none; background: none; color: var(--text); font-size: 12px;
+    font-family: var(--sans); cursor: pointer; text-align: left; transition: background 0.1s;
+  }
+  .export-menu button:hover { background: var(--surface2); }
+  .export-menu button:not(:last-child) { border-bottom: 1px solid var(--border); }
+
   /* grid 2-col */
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   @media(max-width: 600px) { .grid2 { grid-template-columns: 1fr; } main { padding: 20px 16px; } header { padding: 12px 16px; } }
@@ -660,7 +675,14 @@
         <button class="btn btn-danger" id="stop-btn" onclick="stopScripts()" style="padding:10px 28px;display:none">■ Stop</button>
         <div style="margin-left:auto;display:flex;gap:8px">
           <button class="btn btn-sm" style="background:var(--green-dim);color:var(--green);display:none" id="view-report-btn" onclick="navTo('report')">📊 Report</button>
-          <button class="btn btn-sm" style="background:var(--surface2);color:var(--muted);display:none" id="export-btn" onclick="exportReportHTML()">⬇ Export</button>
+          <div class="export-dropdown" id="export-btn" style="display:none;position:relative">
+            <button class="btn btn-sm" style="background:var(--surface2);color:var(--muted)" onclick="toggleExportMenu(this)">⬇ Export ▾</button>
+            <div class="export-menu" style="display:none">
+              <button onclick="exportReportHTML()">📄 HTML Report</button>
+              <button onclick="exportReportCSV()">📊 CSV</button>
+              <button onclick="exportReportExcel()">📗 Excel (.xlsx)</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -691,7 +713,14 @@
         <div style="font-family:var(--mono);font-size:13px" id="det-title"></div>
         <div style="font-size:11px;color:var(--muted);margin-top:2px" id="det-meta"></div>
       </div>
-      <button class="btn btn-sm" style="background:var(--surface2);color:var(--muted)" onclick="exportReportHTMLFromRun(currentDetailRun)">⬇ Export HTML</button>
+      <div class="export-dropdown" style="position:relative">
+        <button class="btn btn-sm" style="background:var(--surface2);color:var(--muted)" onclick="toggleExportMenu(this)">⬇ Export ▾</button>
+        <div class="export-menu" style="display:none">
+          <button onclick="exportReportHTMLFromRun(currentDetailRun)">📄 HTML Report</button>
+          <button onclick="exportReportCSVFromRun(currentDetailRun)">📊 CSV</button>
+          <button onclick="exportReportExcelFromRun(currentDetailRun)">📗 Excel (.xlsx)</button>
+        </div>
+      </div>
     </div>
 
     <!-- Folders that were run -->
@@ -2035,6 +2064,18 @@ function exportReportHTML() {
   exportReportHTMLFromRun(run);
 }
 
+function exportReportCSV() {
+  if (!STATE.results.length) return;
+  const run = { results: STATE.results, org: STATE.sfInstance, ts: Date.now(), pass: STATE.results.filter(r=>r.status==='pass').length, fail: STATE.results.filter(r=>r.status==='fail').length, total: STATE.results.length };
+  exportReportCSVFromRun(run);
+}
+
+function exportReportExcel() {
+  if (!STATE.results.length) return;
+  const run = { results: STATE.results, org: STATE.sfInstance, ts: Date.now(), pass: STATE.results.filter(r=>r.status==='pass').length, fail: STATE.results.filter(r=>r.status==='fail').length, total: STATE.results.length };
+  exportReportExcelFromRun(run);
+}
+
 function exportReportHTMLFromRun(run) {
   if (!run) return;
   const date = new Date(run.ts).toLocaleString();
@@ -2105,6 +2146,88 @@ function exportReportHTMLFromRun(run) {
   a.click();
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+// ── CSV EXPORT ──
+function exportReportCSVFromRun(run) {
+  if (!run) return;
+  const org = (run.org || '').replace(/https?:\/\//, '').split('/')[0];
+  const csvEsc = (v) => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+  const header = ['Status','Folder','Script','Time (ms)','Error Type','Error Message','Error Line'];
+  const rows = run.results.map(r => [
+    r.status === 'pass' ? 'PASS' : 'FAIL',
+    r.folder, r.script, r.ms,
+    r.errorType || '', r.errorMsg || '', r.errorLine || ''
+  ].map(csvEsc).join(','));
+  const csv = '\uFEFF' + header.map(csvEsc).join(',') + '\n' + rows.join('\n');
+  downloadBlob(csv, 'text/csv;charset=utf-8', 'apex-report-' + org + '-' + Date.now() + '.csv');
+}
+
+// ── EXCEL EXPORT (XML Spreadsheet) ──
+function exportReportExcelFromRun(run) {
+  if (!run) return;
+  const org = (run.org || '').replace(/https?:\/\//, '').split('/')[0];
+  const xmlEsc = (v) => String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const header = ['Status','Folder','Script','Time (ms)','Error Type','Error Message','Error Line'];
+  const headerRow = '<Row>' + header.map(h => '<Cell ss:StyleID="hdr"><Data ss:Type="String">' + xmlEsc(h) + '</Data></Cell>').join('') + '</Row>';
+  const dataRows = run.results.map(r => {
+    const cells = [
+      { v: r.status === 'pass' ? 'PASS' : 'FAIL', t: 'String' },
+      { v: r.folder, t: 'String' },
+      { v: r.script, t: 'String' },
+      { v: r.ms, t: 'Number' },
+      { v: r.errorType || '', t: 'String' },
+      { v: r.errorMsg || '', t: 'String' },
+      { v: r.errorLine || '', t: r.errorLine ? 'Number' : 'String' },
+    ];
+    const style = r.status === 'pass' ? 'pass' : 'fail';
+    return '<Row>' + cells.map(c => '<Cell ss:StyleID="' + style + '"><Data ss:Type="' + c.t + '">' + xmlEsc(c.v) + '</Data></Cell>').join('') + '</Row>';
+  }).join('\n    ');
+
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+  <Styles>
+    <Style ss:ID="Default"><Font ss:FontName="Calibri" ss:Size="11"/></Style>
+    <Style ss:ID="hdr"><Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1"/><Interior ss:Color="#E2EFDA" ss:Pattern="Solid"/></Style>
+    <Style ss:ID="pass"><Interior ss:Color="#F0FDF4" ss:Pattern="Solid"/></Style>
+    <Style ss:ID="fail"><Interior ss:Color="#FEF2F2" ss:Pattern="Solid"/><Font ss:FontName="Calibri" ss:Size="11" ss:Color="#DC2626"/></Style>
+  </Styles>
+  <Worksheet ss:Name="Apex Report">
+    <Table>
+      <Column ss:Width="60"/><Column ss:Width="180"/><Column ss:Width="180"/><Column ss:Width="80"/><Column ss:Width="120"/><Column ss:Width="300"/><Column ss:Width="70"/>
+    ${headerRow}
+    ${dataRows}
+    </Table>
+  </Worksheet>
+</Workbook>`;
+  downloadBlob(xml, 'application/vnd.ms-excel', 'apex-report-' + org + '-' + Date.now() + '.xls');
+}
+
+function downloadBlob(content, type, filename) {
+  const blob = new Blob([content], { type: type });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+function toggleExportMenu(btn) {
+  const menu = btn.nextElementSibling;
+  const isOpen = menu.style.display !== 'none';
+  // Close all other menus first
+  document.querySelectorAll('.export-menu').forEach(m => m.style.display = 'none');
+  menu.style.display = isOpen ? 'none' : 'flex';
+  if (!isOpen) {
+    // Close on outside click
+    const close = (e) => { if (!btn.parentElement.contains(e.target)) { menu.style.display = 'none'; document.removeEventListener('click', close); } };
+    setTimeout(() => document.addEventListener('click', close), 0);
+  }
 }
 
 // ══════════════════════════════════════════
