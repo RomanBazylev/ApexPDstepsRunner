@@ -171,6 +171,18 @@
   .secret-toggle:hover { color: var(--text); }
   .secret-toggle svg { width: 16px; height: 16px; }
 
+  /* ── SCRIPT LIST (Run page) ── */
+  .run-script-list { margin: -4px 0 12px; font-size: 12px; }
+  .run-script-list summary { color: var(--muted); cursor: pointer; padding: 6px 0; font-size: 11px; font-family: var(--mono); }
+  .run-script-list summary:hover { color: var(--accent); }
+  .run-script-list-body { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; margin-top: 6px; max-height: 260px; overflow-y: auto; }
+  .rsl-folder { font-size: 12px; color: var(--text); margin-top: 8px; display: flex; align-items: center; gap: 6px; }
+  .rsl-folder:first-child { margin-top: 0; }
+  .rsl-file { font-size: 11px; color: var(--muted); padding-left: 20px; line-height: 1.6; font-family: var(--mono); }
+  .rsl-badge { font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 4px; font-family: var(--mono); text-transform: uppercase; }
+  .rsl-badge.zip { background: var(--amber-dim); color: var(--amber); }
+  .rsl-badge.git { background: var(--accent-dim); color: var(--accent); }
+
   /* ── FILE TREE ── */
   .file-tree { display: flex; flex-direction: column; gap: 6px; }
   .folder-item {
@@ -744,6 +756,10 @@
 
     <div class="card">
       <div class="card-title" id="run-title"><span>▶</span>Ready to run</div>
+      <details id="run-script-list" class="run-script-list" style="display:none">
+        <summary></summary>
+        <div class="run-script-list-body"></div>
+      </details>
       <div class="progress-bar" id="progress-bar" style="display:none">
         <div class="progress-fill" id="progress-fill" style="width:0%"></div>
       </div>
@@ -1482,6 +1498,30 @@ function goToStep3() {
   document.getElementById('section-run').style.display     = 'block';
   const title = document.getElementById('run-title');
   title.innerHTML = `<span>▶</span>Ready — ${selected.length} script(s) selected`;
+
+  // Populate script list
+  const listEl = document.getElementById('run-script-list');
+  listEl.style.display = '';
+  listEl.open = false;
+  const zipScripts = selected.filter(s => s.source === 'zip');
+  const gitScripts = selected.filter(s => s.source === 'git');
+  const summaryParts = [];
+  if (zipScripts.length) summaryParts.push(`📦 ZIP: ${zipScripts.length}`);
+  if (gitScripts.length) summaryParts.push(`🔗 Git: ${gitScripts.length}`);
+  listEl.querySelector('summary').textContent = `${summaryParts.join('  ·  ')} — click to expand`;
+  let html = '';
+  const renderGroup = (scripts, badge) => {
+    const folders = {};
+    scripts.forEach(s => { (folders[s.folder] = folders[s.folder] || []).push(s.name); });
+    for (const [folder, files] of Object.entries(folders).sort((a, b) => a[0].localeCompare(b[0]))) {
+      html += `<div class="rsl-folder">${badge} <strong>${folder}</strong></div>`;
+      files.sort().forEach(f => { html += `<div class="rsl-file">${f}</div>`; });
+    }
+  };
+  if (zipScripts.length) renderGroup(zipScripts, '<span class="rsl-badge zip">ZIP</span>');
+  if (gitScripts.length) renderGroup(gitScripts, '<span class="rsl-badge git">GIT</span>');
+  listEl.querySelector('.run-script-list-body').innerHTML = html;
+
   STATE.results = [];
   document.getElementById('run-log').innerHTML = '<div class="empty"><div class="empty-icon">⚡</div>Press ▶ Run to start</div>';
   document.getElementById('summary').style.display = 'none';
