@@ -165,7 +165,7 @@
   select option { background: var(--surface2); }
 
   /* ── FILE TREE ── */
-  .file-tree { display: flex; flex-direction: column; gap: 4px; }
+  .file-tree { display: flex; flex-direction: column; gap: 6px; }
   .folder-item {
     border: 1px solid var(--border);
     border-radius: 8px; overflow: hidden;
@@ -175,18 +175,34 @@
     padding: 10px 14px; cursor: pointer;
     background: var(--surface2);
     transition: background 0.15s;
+    user-select: none;
   }
   .folder-header:hover { background: rgba(124,106,247,0.08); }
-  .folder-header input[type=checkbox] { accent-color: var(--accent); width: 15px; height: 15px; }
-  .folder-name { font-family: var(--mono); font-size: 12px; flex: 1; }
-  .folder-count { font-size: 11px; color: var(--muted); }
-  .folder-scripts { padding: 8px 14px 10px 38px; display: flex; flex-direction: column; gap: 4px; }
+  .folder-header input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; flex-shrink: 0; cursor: pointer; }
+  .folder-name { font-family: var(--mono); font-size: 12px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .folder-count { font-size: 11px; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
+  .folder-chevron { color: var(--muted); font-size: 11px; flex-shrink: 0; transition: transform 0.2s; }
+  .folder-header.collapsed .folder-chevron { transform: rotate(-90deg); }
+  .folder-scripts { padding: 4px 14px 8px 14px; display: flex; flex-direction: column; gap: 0; }
+  .folder-scripts.collapsed { display: none; }
   .script-item {
-    display: flex; align-items: center; gap: 8px;
-    font-family: var(--mono); font-size: 11px; color: var(--muted);
-    padding: 3px 0;
+    display: flex; align-items: center; gap: 10px;
+    font-size: 12px; color: var(--text);
+    padding: 6px 8px;
+    border-radius: 6px;
+    transition: background 0.1s;
   }
-  .script-item input[type=checkbox] { accent-color: var(--accent); }
+  .script-item:hover { background: var(--surface2); }
+  .script-item input[type=checkbox] { accent-color: var(--accent); width: 15px; height: 15px; flex-shrink: 0; cursor: pointer; }
+  .script-item.empty { opacity: 0.4; }
+  .script-name { font-family: var(--mono); font-size: 11px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .script-badge { font-size: 9px; padding: 1px 6px; border-radius: 4px; white-space: nowrap; flex-shrink: 0; }
+  .script-badge-empty { background: var(--amber-dim); color: var(--amber); }
+  .file-tree-summary {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 0 4px; font-size: 12px; color: var(--muted);
+    font-family: var(--mono);
+  }
 
   /* ── RUN RESULTS ── */
   .run-log {
@@ -1453,10 +1469,13 @@ function renderZipFolders() {
 
   list.innerHTML = '';
   let totalFiles = 0;
-  Object.keys(groups).sort().forEach(folder => {
+  let totalEnabled = 0;
+  const folders = Object.keys(groups).sort();
+  folders.forEach(folder => {
     const files = groups[folder].sort((a, b) => a.name.localeCompare(b.name));
     const nonEmpty = files.filter(f => (zipFiles[f.fullPath] || '').trim());
     totalFiles += files.length;
+    totalEnabled += nonEmpty.length;
     const item  = document.createElement('div');
     item.className = 'folder-item';
     const safeAttr = folder.replace(/"/g, '&quot;');
@@ -1464,27 +1483,32 @@ function renderZipFolders() {
     item.innerHTML = `
       <div class="folder-header" onclick="toggleFolder(this)">
         <input type="checkbox" class="folder-cb" data-folder="${safeAttr}" ${allEmpty ? 'disabled' : 'checked'} onclick="event.stopPropagation();syncFolder(this)">
-        <span style="opacity:0.5">📁</span>
+        <span style="opacity:0.6;font-size:14px">📁</span>
         <span class="folder-name">${escHtml(folder)}</span>
-        <span class="folder-count">${nonEmpty.length}/${files.length} скриптов</span>
-        <span style="color:var(--muted);font-size:11px;margin-left:4px">▾</span>
+        <span class="folder-count">${nonEmpty.length} из ${files.length}</span>
+        <span class="folder-chevron">▾</span>
       </div>
       <div class="folder-scripts">
         ${files.map(f => {
           const empty = !(zipFiles[f.fullPath] || '').trim();
           return `
-          <div class="script-item" ${empty ? 'style="opacity:0.45"' : ''}>
+          <div class="script-item${empty ? ' empty' : ''}">
             <input type="checkbox" class="script-cb"
               data-folder="${safeAttr}" data-file="${escHtml(f.name)}"
               data-zip-path="${escHtml(f.fullPath)}" data-source="zip"
               ${empty ? 'disabled' : 'checked'}>
-            <span>${escHtml(f.name)}</span>
-            ${empty ? '<span style="font-size:10px;color:var(--amber);margin-left:4px">(пустой файл)</span>' : ''}
+            <span class="script-name">${escHtml(f.name)}</span>
+            ${empty ? '<span class="script-badge script-badge-empty">пустой</span>' : ''}
           </div>`;
         }).join('')}
       </div>`;
     list.appendChild(item);
   });
+  // Summary line
+  const summary = document.createElement('div');
+  summary.className = 'file-tree-summary';
+  summary.textContent = `${folders.length} папок · ${totalEnabled} скриптов${totalFiles !== totalEnabled ? ` · ${totalFiles - totalEnabled} пустых` : ''}`;
+  list.insertBefore(summary, list.firstChild);
   return totalFiles > 0;
 }
 
@@ -1548,19 +1572,21 @@ async function loadFolders() {
     list.innerHTML = '';
     const tree = document.createElement('div');
     tree.className = 'file-tree';
-
-    Object.keys(groups).sort().forEach(folder => {
+    const folders = Object.keys(groups).sort();
+    let totalFiles = 0;
+    folders.forEach(folder => {
       const files = groups[folder].sort((a, b) => a.name.localeCompare(b.name));
+      totalFiles += files.length;
       const item  = document.createElement('div');
       item.className = 'folder-item';
       const safeFolderAttr = folder.replace(/"/g, '&quot;');
       item.innerHTML = `
         <div class="folder-header" onclick="toggleFolder(this)">
           <input type="checkbox" class="folder-cb" data-folder="${safeFolderAttr}" checked onclick="event.stopPropagation();syncFolder(this)">
-          <span style="opacity:0.5">📁</span>
-          <span class="folder-name">${folder}</span>
-          <span class="folder-count">${files.length} scripts</span>
-          <span style="color:var(--muted);font-size:11px;margin-left:4px">▾</span>
+          <span style="opacity:0.6;font-size:14px">📁</span>
+          <span class="folder-name">${escHtml(folder)}</span>
+          <span class="folder-count">${files.length} скриптов</span>
+          <span class="folder-chevron">▾</span>
         </div>
         <div class="folder-scripts">
           ${files.map(f => `
@@ -1569,11 +1595,16 @@ async function loadFolders() {
                 data-folder="${safeFolderAttr}"
                 data-file="${f.name}"
                 data-url="${f.url}" checked>
-              <span>${f.name}</span>
+              <span class="script-name">${escHtml(f.name)}</span>
             </div>`).join('')}
         </div>`;
       tree.appendChild(item);
     });
+    // Summary line
+    const summary = document.createElement('div');
+    summary.className = 'file-tree-summary';
+    summary.textContent = `${folders.length} папок · ${totalFiles} скриптов`;
+    tree.insertBefore(summary, tree.firstChild);
 
     list.appendChild(tree);
   } catch(e) {
@@ -1608,7 +1639,8 @@ async function ghFetchTree(repo, basePath, exts) {
 
 function toggleFolder(header) {
   const scripts = header.nextElementSibling;
-  scripts.style.display = scripts.style.display === 'none' ? '' : 'none';
+  const isCollapsed = scripts.classList.toggle('collapsed');
+  header.classList.toggle('collapsed', isCollapsed);
 }
 
 function syncFolder(cb) {
