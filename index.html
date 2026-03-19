@@ -952,17 +952,14 @@ function init() {
     // Don't need to show GH connected state — it's invisible to user
   }
 
-  // Handle OAuth callbacks
-  const params = new URLSearchParams(location.search);
-
-  if (params.get('code')) {
-    // OAuth PKCE: returned with authorization code
-    handleOAuthCodeCallback(params.get('code'));
-    return; // handleOAuthCodeCallback will call onSFConnected
-  } else if (params.get('error')) {
-    const desc = decodeURIComponent(params.get('error_description') || params.get('error'));
-    showStatus('sf-status-oauth', '❌ ' + desc, 'fail');
-    history.replaceState({}, '', location.pathname);
+  // Handle OAuth implicit callback (token in URL hash #access_token=...)
+  if (location.hash && location.hash.includes('access_token')) {
+    handleOAuthHashCallback();
+    return;
+  }
+  // Handle OAuth error in hash
+  if (location.hash && location.hash.includes('error')) {
+    handleOAuthHashCallback();
   }
 
   // Restore SF session
@@ -1009,108 +1006,60 @@ function getSFInstance() {
 }
 
 // ══════════════════════════════════════════
-// OAuth 2.0 PKCE helpers
+// OAuth 2.0 Implicit Flow (no token exchange = no CORS issues)
 // ══════════════════════════════════════════
-function generateCodeVerifier() {
-  const arr = new Uint8Array(32);
-  crypto.getRandomValues(arr);
-  return btoa(String.fromCharCode(...arr)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-async function generateCodeChallenge(verifier) {
-  const data = new TextEncoder().encode(verifier);
-  const hash = await crypto.subtle.digest('SHA-256', data);
-  return btoa(String.fromCharCode(...new Uint8Array(hash))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
 
-// Method 1: OAuth PKCE (recommended — no proxy needed)
-async function connectSFOAuth() {
+// Method 1: OAuth Implicit (recommended — no proxy needed)
+function connectSFOAuth() {
   saveConfig();
   const clientId = document.getElementById('sf-client-id').value.trim();
   const instance = document.getElementById('sf-instance-oauth').value.trim().replace(/\/$/, '');
   if (!instance) { alert('Введите Instance URL вашей org'); return; }
   if (!clientId) { alert('Введите Consumer Key из Connected App'); return; }
 
-  const codeVerifier = generateCodeVerifier();
-  const codeChallenge = await generateCodeChallenge(codeVerifier);
-
-  // Save PKCE verifier + context for after redirect
-  sessionStorage.setItem('sf_pkce_verifier', codeVerifier);
-  sessionStorage.setItem('sf_pkce_client_id', clientId);
+  // Save instance for after redirect
   sessionStorage.setItem('sf_instance_pending', instance);
 
   const redirect = location.origin + location.pathname;
   const url = `${instance}/services/oauth2/authorize`
-    + `?response_type=code`
+    + `?response_type=token`
     + `&client_id=${encodeURIComponent(clientId)}`
     + `&redirect_uri=${encodeURIComponent(redirect)}`
-    + `&code_challenge=${encodeURIComponent(codeChallenge)}`
-    + `&code_challenge_method=S256`
     + `&scope=${encodeURIComponent('api')}`;
 
   showStatus('sf-status-oauth', '⏳ Перенаправляю на Salesforce…', 'warn');
   location.href = url;
 }
 
-// Called from init() when returning from OAuth with ?code=
-async function handleOAuthCodeCallback(code) {
-  const verifier = sessionStorage.getItem('sf_pkce_verifier');
-  const clientId = sessionStorage.getItem('sf_pkce_client_id');
-  const instance = sessionStorage.getItem('sf_instance_pending');
+// Called from init() when returning from OAuth with #access_token=
+function handleOAuthHashCallback() {
+  const hash = location.hash.substring(1); // remove #
+  const params = new URLSearchParams(hash);
+  const accessToken = params.get('access_token');
+  const instanceUrl = params.get('instance_url');
+  const pendingInstance = sessionStorage.getItem('sf_instance_pending');
 
-  // Clean URL
+  // Clean URL (remove hash)
   history.replaceState({}, '', location.pathname);
 
-  if (!verifier || !clientId || !instance) {
-    showStatus('sf-status-oauth', '❌ Потерян PKCE контекст — попробуйте войти снова', 'fail');
+  if (params.get('error')) {
+    const desc = decodeURIComponent(params.get('error_description') || params.get('error'));
+    showStatus('sf-status-oauth', '❌ ' + desc, 'fail');
     return;
   }
 
-  showStatus('sf-status-oauth', '⏳ Получаю токен…', 'warn');
+  if (!accessToken) return; // no token in hash — not an OAuth callback
 
-  try {
-    const redirect = location.origin + location.pathname;
-    const body = new URLSearchParams({
-      grant_type: 'authorization_code',
-      code: code,
-      client_id: clientId,
-      redirect_uri: redirect,
-      code_verifier: verifier,
-    });
+  STATE.sfToken    = accessToken;
+  STATE.sfInstance = instanceUrl || pendingInstance || '';
+  sessionStorage.setItem('sf_token', accessToken);
+  sessionStorage.setItem('sf_instance', STATE.sfInstance);
+  sessionStorage.removeItem('sf_instance_pending');
 
-    // Token endpoint supports CORS natively — no proxy needed!
-    const res = await fetch(`${instance}/services/oauth2/token`, {
-      method: 'POST',
-      body: body,
-    });
-    const data = await res.json();
-
-    if (data.access_token) {
-      STATE.sfToken    = data.access_token;
-      STATE.sfInstance = data.instance_url || instance;
-      sessionStorage.setItem('sf_token', data.access_token);
-      sessionStorage.setItem('sf_instance', STATE.sfInstance);
-
-      // Clean up PKCE session data
-      sessionStorage.removeItem('sf_pkce_verifier');
-      sessionStorage.removeItem('sf_pkce_client_id');
-      sessionStorage.removeItem('sf_instance_pending');
-
-      try { await fetchSFUser(); } catch(e) { STATE.sfUser = '(OAuth)'; }
-      showStatus('sf-status-oauth', '✅ Подключено', 'pass');
-      onSFConnected();
-    } else {
-      const errMsg = data.error_description || data.error || JSON.stringify(data);
-      showStatus('sf-status-oauth', '❌ ' + errMsg, 'fail');
-    }
-  } catch(e) {
-    console.error('Token exchange error:', e);
-    let msg = e.message;
-    if (msg === 'Failed to fetch') {
-      msg = `CORS блокирует запрос к ${instance}/services/oauth2/token.\n`
-          + `Добавьте https://romanbazylev.github.io в Setup → Security → CORS → New`;
-    }
-    showStatus('sf-status-oauth', '❌ ' + msg, 'fail');
-  }
+  fetchSFUser().catch(() => { STATE.sfUser = '(OAuth)'; }).then(() => {
+    showStatus('sf-status-oauth', '✅ Подключено как ' + (STATE.sfUser || 'OAuth'), 'pass');
+    onSFConnected();
+  });
 }
 
 // Method 2: Session ID + CORS proxy (fallback)
