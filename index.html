@@ -1103,8 +1103,12 @@ async function handleOAuthCodeCallback(code) {
       showStatus('sf-status-oauth', '❌ ' + errMsg, 'fail');
     }
   } catch(e) {
+    console.error('Token exchange error:', e);
     let msg = e.message;
-    if (msg === 'Failed to fetch') msg = 'Ошибка сети — проверьте Instance URL и что CORS настроен в Salesforce';
+    if (msg === 'Failed to fetch') {
+      msg = `CORS блокирует запрос к ${instance}/services/oauth2/token.\n`
+          + `Добавьте https://romanbazylev.github.io в Setup → Security → CORS → New`;
+    }
     showStatus('sf-status-oauth', '❌ ' + msg, 'fail');
   }
 }
