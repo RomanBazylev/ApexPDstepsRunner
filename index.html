@@ -422,26 +422,86 @@
             </div>
           </div>
           <details style="margin-bottom:12px">
-            <summary style="font-size:11px;color:var(--muted);cursor:pointer">📖 How to create a Connected App (ask your admin, 1 min)</summary>
-            <div style="font-size:11px;color:var(--muted);line-height:1.9;background:var(--surface2);padding:12px;border-radius:8px;margin-top:6px">
-              <strong>Send these instructions to your Salesforce admin:</strong><br><br>
-              <strong style="color:var(--amber)">⚠️ Required permissions for the admin:</strong><br>
-              &nbsp;&nbsp;• For standard Connected Apps: <code>Manage Connected Apps</code> permission<br>
-              &nbsp;&nbsp;• For External Client Apps: <code>View External Client App Consumer Secrets in Metadata</code>,<br>
-              &nbsp;&nbsp;&nbsp;&nbsp;<code>View all External Client Apps, view their settings, and edit their policies</code><br><br>
-              <strong>Steps to create the app:</strong><br>
-              1. Setup → App Manager → <strong>New Connected App</strong><br>
-              2. Fill in:<br>
-              &nbsp;&nbsp;• Connected App Name: <code>Apex Runner</code><br>
-              &nbsp;&nbsp;• Contact Email: your email<br>
-              &nbsp;&nbsp;• ✅ Enable OAuth Settings<br>
-              &nbsp;&nbsp;• Callback URL: <code id="sf-callback-display"></code><br>
-              &nbsp;&nbsp;• Selected OAuth Scopes: <strong>Full access (full)</strong> or at minimum <strong>Manage user data via APIs (api)</strong><br>
-              &nbsp;&nbsp;• ❌ Require Secret for Web Server Flow — <strong>uncheck this!</strong><br>
-              3. Save → wait 2–10 min for propagation<br>
-              4. Copy the <strong>Consumer Key</strong> and paste it above<br><br>
-              <strong>Also add CORS origin:</strong><br>
-              Setup → Security → CORS → New → Origin URL: <code id="sf-cors-origin"></code>
+            <summary style="font-size:12px;color:var(--accent);cursor:pointer;font-weight:500;padding:4px 0">📖 How to create a Connected App (ask your admin, 1 min)</summary>
+            <div style="background:var(--surface2);border-radius:8px;margin-top:8px;overflow:hidden;border:1px solid var(--border)">
+
+              <!-- Permissions callout -->
+              <div style="padding:12px 16px;background:var(--amber-dim);border-bottom:1px solid rgba(251,191,36,0.15);font-size:11px;line-height:1.7">
+                <div style="font-weight:600;color:var(--amber);margin-bottom:4px">⚠️ Required admin permissions</div>
+                <div style="color:var(--text);display:flex;flex-direction:column;gap:4px">
+                  <div>
+                    <span style="color:var(--muted)">Standard Connected Apps:</span>
+                    <code style="background:rgba(251,191,36,0.15);padding:1px 6px;border-radius:4px;font-family:var(--mono);font-size:10px;color:var(--text)">Manage Connected Apps</code>
+                  </div>
+                  <div>
+                    <span style="color:var(--muted)">External Client Apps:</span>
+                    <code style="background:rgba(251,191,36,0.15);padding:1px 6px;border-radius:4px;font-family:var(--mono);font-size:10px;color:var(--text)">View External Client App Consumer Secrets in Metadata</code>
+                    <span style="color:var(--muted);margin:0 2px">+</span>
+                    <code style="background:rgba(251,191,36,0.15);padding:1px 6px;border-radius:4px;font-family:var(--mono);font-size:10px;color:var(--text)">View all External Client Apps</code>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Steps -->
+              <div style="padding:14px 16px;font-size:11px;line-height:1.8;color:var(--muted)">
+                <div style="font-weight:600;color:var(--text);font-size:12px;margin-bottom:8px">Steps to create the app</div>
+
+                <div style="display:flex;gap:10px;margin-bottom:10px">
+                  <span style="background:var(--accent);color:#fff;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-top:1px">1</span>
+                  <div>Setup → App Manager → <strong style="color:var(--text)">New Connected App</strong></div>
+                </div>
+
+                <div style="display:flex;gap:10px;margin-bottom:10px">
+                  <span style="background:var(--accent);color:#fff;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-top:1px">2</span>
+                  <div style="flex:1">
+                    Fill in the form:
+                    <table style="margin-top:6px;font-size:11px;border-collapse:collapse;width:100%">
+                      <tr>
+                        <td style="padding:4px 8px;border:1px solid var(--border);color:var(--muted);white-space:nowrap;width:40%">Connected App Name</td>
+                        <td style="padding:4px 8px;border:1px solid var(--border)"><code style="background:var(--accent-dim);padding:1px 6px;border-radius:3px;font-family:var(--mono);font-size:10px;color:var(--accent)">Apex Runner</code></td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 8px;border:1px solid var(--border);color:var(--muted)">Contact Email</td>
+                        <td style="padding:4px 8px;border:1px solid var(--border);color:var(--text)">your email</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 8px;border:1px solid var(--border);color:var(--muted)">Enable OAuth Settings</td>
+                        <td style="padding:4px 8px;border:1px solid var(--border)"><span style="color:var(--green)">✅ Check</span></td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 8px;border:1px solid var(--border);color:var(--muted)">Callback URL</td>
+                        <td style="padding:4px 8px;border:1px solid var(--border)"><code style="background:var(--accent-dim);padding:1px 6px;border-radius:3px;font-family:var(--mono);font-size:10px;color:var(--accent)" id="sf-callback-display"></code></td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 8px;border:1px solid var(--border);color:var(--muted)">OAuth Scopes</td>
+                        <td style="padding:4px 8px;border:1px solid var(--border)"><strong style="color:var(--text)">Full access (full)</strong> <span style="color:var(--muted)">or at minimum</span> <strong style="color:var(--text)">api</strong></td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 8px;border:1px solid var(--border);color:var(--muted)">Require Secret for Web Server Flow</td>
+                        <td style="padding:4px 8px;border:1px solid var(--border)"><span style="color:var(--red)">❌ Uncheck!</span></td>
+                      </tr>
+                    </table>
+                  </div>
+                </div>
+
+                <div style="display:flex;gap:10px;margin-bottom:10px">
+                  <span style="background:var(--accent);color:#fff;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-top:1px">3</span>
+                  <div><strong style="color:var(--text)">Save</strong> → wait 2–10 min for propagation</div>
+                </div>
+
+                <div style="display:flex;gap:10px;margin-bottom:14px">
+                  <span style="background:var(--accent);color:#fff;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-top:1px">4</span>
+                  <div>Copy the <strong style="color:var(--text)">Consumer Key</strong> and paste it in the field above</div>
+                </div>
+
+                <!-- CORS callout -->
+                <div style="background:var(--accent-dim);border:1px solid rgba(124,106,247,0.2);border-radius:6px;padding:10px 12px;font-size:11px;line-height:1.6">
+                  <div style="font-weight:600;color:var(--accent);margin-bottom:2px">🌐 Also add CORS origin</div>
+                  <span style="color:var(--muted)">Setup → Security → CORS → New → Origin URL:</span>
+                  <code style="background:var(--surface);padding:2px 8px;border-radius:4px;font-family:var(--mono);font-size:10px;color:var(--accent);margin-left:4px" id="sf-cors-origin"></code>
+                </div>
+              </div>
+
             </div>
           </details>
           <div style="background:var(--green-dim);border:1px solid rgba(61,214,140,0.15);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:11px;color:var(--green)">
