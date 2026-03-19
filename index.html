@@ -340,9 +340,18 @@
   .docs-table th { text-align: left; padding: 8px 12px; background: var(--surface2); color: var(--muted); font-weight: 500; font-family: var(--mono); font-size: 11px; }
   .docs-table td { padding: 8px 12px; border-top: 1px solid var(--border); color: var(--muted); vertical-align: top; }
   .docs-table td strong { color: var(--text); }
-  .docs-toc { display: flex; flex-direction: column; gap: 4px; padding: 16px; background: var(--surface2); border-radius: 8px; margin-bottom: 24px; }
-  .docs-toc a { font-size: 12px; color: var(--muted); text-decoration: none; padding: 2px 0; }
-  .docs-toc a:hover { color: var(--accent); }
+  .docs-toc { display: flex; flex-direction: column; gap: 2px; padding: 16px 18px; background: var(--surface2); border-radius: 10px; margin-bottom: 28px; border: 1px solid var(--border); }
+  .docs-toc a { font-size: 12px; color: var(--muted); text-decoration: none; padding: 4px 8px; border-radius: 6px; transition: all .15s; }
+  .docs-toc a:hover { color: var(--accent); background: var(--accent-dim); }
+  .docs-body h2 .docs-section-icon { margin-right: 8px; font-size: 15px; }
+  .docs-step { display: flex; gap: 12px; margin-bottom: 14px; }
+  .docs-step-num { background: var(--accent); color: #fff; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0; margin-top: 2px; }
+  .docs-step-body { flex: 1; color: var(--muted); }
+  .docs-step-body strong { color: var(--text); }
+  .docs-faq-item { background: var(--surface2); border-radius: 8px; padding: 14px 18px; margin-bottom: 8px; border: 1px solid var(--border); }
+  .docs-faq-item h3 { margin: 0 0 6px; font-size: 13px; }
+  .docs-faq-item p { margin: 0; }
+  .docs-faq-item p + p { margin-top: 6px; }
 
 </style>
 </head>
@@ -494,12 +503,6 @@
                   <div>Copy the <strong style="color:var(--text)">Consumer Key</strong> and paste it in the field above</div>
                 </div>
 
-                <!-- CORS callout -->
-                <div style="background:var(--accent-dim);border:1px solid rgba(124,106,247,0.2);border-radius:6px;padding:10px 12px;font-size:11px;line-height:1.6">
-                  <div style="font-weight:600;color:var(--accent);margin-bottom:2px">🌐 Also add CORS origin</div>
-                  <span style="color:var(--muted)">Setup → Security → CORS → New → Origin URL:</span>
-                  <code style="background:var(--surface);padding:2px 8px;border-radius:4px;font-family:var(--mono);font-size:10px;color:var(--accent);margin-left:4px" id="sf-cors-origin"></code>
-                </div>
               </div>
 
             </div>
@@ -828,18 +831,19 @@
 
     <div class="docs-toc">
       <strong style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:6px">ON THIS PAGE</strong>
-      <a href="#doc-what">What is Apex Runner?</a>
-      <a href="#doc-how">How it works</a>
-      <a href="#doc-deploy">Deploying to GitHub Pages</a>
-      <a href="#doc-sf">Salesforce login (SSO)</a>
-      <a href="#doc-scripts">Script sources</a>
-      <a href="#doc-structure">Repo structure</a>
-      <a href="#doc-security">Security</a>
-      <a href="#doc-config">Config reference</a>
-      <a href="#doc-faq">FAQ</a>
+      <a href="#doc-what">🚀 What is Apex Runner?</a>
+      <a href="#doc-how">⚙️ How it works</a>
+      <a href="#doc-deploy">🌐 Deploying to GitHub Pages</a>
+      <a href="#doc-sf">🔐 Salesforce login (SSO)</a>
+      <a href="#doc-scripts">📦 Script sources</a>
+      <a href="#doc-structure">📁 Repo structure</a>
+      <a href="#doc-security">🔒 Security</a>
+      <a href="#doc-config">🛠 Config reference</a>
+      <a href="#doc-faq">❓ FAQ</a>
     </div>
 
-    <h2 id="doc-what">What is Apex Runner?</h2>
+    <!-- ═══════════════ WHAT IS ═══════════════ -->
+    <h2 id="doc-what"><span class="docs-section-icon">🚀</span>What is Apex Runner?</h2>
     <p>Apex Runner is a lightweight browser-based tool for running Apex scripts stored in a GitHub repository against any Salesforce sandbox. It lives as a single <code>index.html</code> file on GitHub Pages — no server, no backend, no installation required.</p>
     <p>It was built to solve a common problem: when a new sandbox is created, a set of post-deployment Apex scripts needs to be executed to set up reference data (approval rules, CPQ configuration, etc.). Doing this manually — opening Developer Console, pasting each script one by one — is slow and error-prone.</p>
 
@@ -847,42 +851,78 @@
       <strong>No infrastructure needed.</strong> The app is a static HTML file. It talks directly to Salesforce and GitHub APIs from your browser. Nothing is stored on any server.
     </div>
 
-    <h2 id="doc-how">How it works</h2>
-    <h3>Step 1 — Connect to Salesforce</h3>
-    <p>Click <strong>Login with Salesforce SSO</strong>. You'll be redirected to your org's standard Salesforce login page — the same one you use every day, with your SSO button. After authenticating, you're returned to the app with a session token. The token lives only in <code>sessionStorage</code> and is gone when you close the tab.</p>
+    <!-- ═══════════════ HOW IT WORKS ═══════════════ -->
+    <h2 id="doc-how"><span class="docs-section-icon">⚙️</span>How it works</h2>
 
-    <h3>Step 2 — Select scripts</h3>
-    <p>Choose where to load scripts from — a ZIP archive downloaded from GitHub, or directly from a GitHub repository. Select the folders you want to run. Scripts execute in alphabetical order within each folder, so naming them <code>01_setup.txt</code>, <code>02_configure.txt</code> controls execution order.</p>
-
-    <h3>Step 3 — Run</h3>
-    <p>The app sends each script to Salesforce via the <strong>Tooling API</strong> (<code>executeAnonymous</code> endpoint) over HTTPS. Results appear in real time — each script shows pass ✅ or fail ❌ with the error message and execution time. When finished, you can export a full HTML report.</p>
-
-    <h2 id="doc-deploy">Deploying to GitHub Pages</h2>
-    <ol>
-      <li>Create a new GitHub repository (can be public or private if your org is on Team/Enterprise plan)</li>
-      <li>Place <code>index.html</code> in the root of the repo</li>
-      <li>Fill in the <a href="#doc-config">CONFIG block</a> at the top of the script section</li>
-      <li>Go to <strong>Settings → Pages → Source: Deploy from branch → main / root</strong></li>
-      <li>After 1–2 minutes the app is live at <code>https://your-org.github.io/repo-name/</code></li>
-    </ol>
-
-    <div class="docs-callout warn">
-      <strong>Public repo + CONFIG token:</strong> If your Pages repo is public, do not hardcode the GitHub token in <code>CONFIG.GH_TOKEN</code> — anyone can read it from the source. Instead, leave it empty and each user enters their own PAT in the GitHub tab on step 2. It gets saved to their browser's <code>localStorage</code>.
+    <div class="docs-step">
+      <span class="docs-step-num">1</span>
+      <div class="docs-step-body">
+        <strong>Connect to Salesforce</strong>
+        Click <strong>Login with Salesforce</strong>. You'll be redirected to your org's standard login page — the same one you use every day, including your company's SSO button. After authenticating, you're returned to the app with a session token. The token lives only in <code>sessionStorage</code> and is gone when you close the tab.
+      </div>
     </div>
 
-    <h2 id="doc-sf">Salesforce login (SSO)</h2>
-    <p>The app uses <strong>OAuth 2.0 Authorization Code flow with PKCE</strong> — a secure standard for browser-based apps. It requires a <strong>Connected App</strong> in your Salesforce org (your admin can create it in 1 minute).</p>
-    <p>PKCE (Proof Key for Code Exchange) does not require a client secret. When you click Login, the app generates a one-time code challenge, redirects you to Salesforce, and exchanges the returned code for an access token — all without any server or proxy.</p>
+    <div class="docs-step">
+      <span class="docs-step-num">2</span>
+      <div class="docs-step-body">
+        <strong>Select scripts</strong>
+        Choose where to load scripts from — a <strong>ZIP archive</strong> downloaded from GitHub, or <strong>directly from a GitHub repository</strong>. Select the folders you want to run. Scripts execute in alphabetical order within each folder, so naming them <code>01_setup.txt</code>, <code>02_configure.txt</code> controls execution order.
+      </div>
+    </div>
+
+    <div class="docs-step">
+      <span class="docs-step-num">3</span>
+      <div class="docs-step-body">
+        <strong>Run</strong>
+        The app sends each script to Salesforce via the <strong>Tooling API</strong> (<code>executeAnonymous</code> endpoint) over HTTPS. Results appear in real time — each script shows pass ✅ or fail ❌ with the error message and execution time. You can <strong>stop execution</strong> at any time using the Stop button. When finished, export a full report in <strong>HTML</strong>, <strong>CSV</strong>, or <strong>Excel</strong> format.
+      </div>
+    </div>
+
+    <!-- ═══════════════ DEPLOY ═══════════════ -->
+    <h2 id="doc-deploy"><span class="docs-section-icon">🌐</span>Deploying to GitHub Pages</h2>
+
+    <div class="docs-step">
+      <span class="docs-step-num">1</span>
+      <div class="docs-step-body">Create a new GitHub repository (can be private if your org is on Team/Enterprise plan)</div>
+    </div>
+    <div class="docs-step">
+      <span class="docs-step-num">2</span>
+      <div class="docs-step-body">Place <code>index.html</code> in the root of the repo</div>
+    </div>
+    <div class="docs-step">
+      <span class="docs-step-num">3</span>
+      <div class="docs-step-body">Fill in the <a href="#doc-config">CONFIG block</a> at the top of the script section (repo name, base path)</div>
+    </div>
+    <div class="docs-step">
+      <span class="docs-step-num">4</span>
+      <div class="docs-step-body">Go to <strong>Settings → Pages → Source: Deploy from branch → main / root</strong></div>
+    </div>
+    <div class="docs-step">
+      <span class="docs-step-num">5</span>
+      <div class="docs-step-body">After 1–2 minutes the app is live at <code>https://your-org.github.io/repo-name/</code></div>
+    </div>
+
+    <div class="docs-callout warn">
+      <strong>⚠️ Public repo + CONFIG token:</strong> If your Pages repo is public, do not hardcode the GitHub token in <code>CONFIG.GH_TOKEN</code> — anyone can read it from the source. Instead, leave it empty and each user enters their own PAT in the GitHub tab on step 2. It gets saved to their browser's <code>localStorage</code>.
+    </div>
+
+    <!-- ═══════════════ SF LOGIN ═══════════════ -->
+    <h2 id="doc-sf"><span class="docs-section-icon">🔐</span>Salesforce login (SSO)</h2>
+    <p>The app uses <strong>OAuth 2.0 Implicit flow</strong> — a standard for browser-based apps that does not require a backend server. It requires a <strong>Connected App</strong> in your Salesforce org (your admin can create it in 1 minute).</p>
+    <p>When you click Login, the app redirects you to Salesforce's authorize endpoint. After you authenticate, Salesforce returns the access token directly in the URL hash — no server-side token exchange or client secret is needed.</p>
     <p>SSO works transparently: Salesforce's login page shows your company's SSO button exactly as it does when you log in normally.</p>
 
     <div class="docs-callout info">
       <strong>Connected App setup (admin, 1 min):</strong><br>
-      Setup → App Manager → New Connected App → Enable OAuth → Callback URL = your GitHub Pages URL → Scope: <code>api</code> → ✅ PKCE enabled → ❌ Require Secret = OFF → Save → copy Consumer Key.
-      <br><br>
-      Also add CORS: Setup → Security → CORS → New → Origin URL = <code>https://your-org.github.io</code>
+      Setup → App Manager → New Connected App → Enable OAuth → Callback URL = your GitHub Pages URL → Scope: <code>api</code> → ❌ Require Secret = OFF → Save → copy Consumer Key.
     </div>
 
-    <h2 id="doc-scripts">Script sources</h2>
+    <div class="docs-callout good">
+      <strong>No CORS configuration needed.</strong> The OAuth Implicit flow uses browser redirects, not API calls from JavaScript. That means you don't need to add any CORS origins in Salesforce Setup.
+    </div>
+
+    <!-- ═══════════════ SCRIPT SOURCES ═══════════════ -->
+    <h2 id="doc-scripts"><span class="docs-section-icon">📦</span>Script sources</h2>
 
     <h3>📦 ZIP archive</h3>
     <p>Download the repo as a ZIP from GitHub (<strong>Code → Download ZIP</strong>) and drag it into the app. No GitHub token needed. The app reads the ZIP entirely in browser memory — nothing is uploaded anywhere. Use this when you don't want to deal with tokens, or when working offline.</p>
@@ -898,7 +938,8 @@
       <tr><td>Setup time</td><td><strong>Instant</strong></td><td>~5 min (create PAT)</td></tr>
     </table>
 
-    <h2 id="doc-structure">Repo structure</h2>
+    <!-- ═══════════════ REPO STRUCTURE ═══════════════ -->
+    <h2 id="doc-structure"><span class="docs-section-icon">📁</span>Repo structure</h2>
     <p>Scripts should be organized in subfolders under a base path. The app displays each subfolder as a collapsible group with checkboxes. Both <code>.txt</code> and <code>.apex</code> extensions are supported by default.</p>
     <pre>scripts/
   apex/
@@ -916,7 +957,8 @@
         01_assign_permissions.txt</pre>
     <p>Scripts within each folder run in <strong>alphabetical order</strong>. Prefix filenames with numbers (<code>01_</code>, <code>02_</code>) to control execution order explicitly.</p>
 
-    <h2 id="doc-security">Security</h2>
+    <!-- ═══════════════ SECURITY ═══════════════ -->
+    <h2 id="doc-security"><span class="docs-section-icon">🔒</span>Security</h2>
 
     <table class="docs-table">
       <tr><th>Data</th><th>Where it lives</th><th>Who can see it</th></tr>
@@ -927,55 +969,74 @@
       <tr><td><strong>index.html source</strong></td><td>GitHub Pages</td><td>Public — contains no secrets.</td></tr>
     </table>
 
-    <p>There is no backend server. No data is logged, tracked, or stored anywhere except your own browser. All API calls go directly from your browser to Salesforce or GitHub over HTTPS.</p>
+    <div class="docs-callout good">
+      <strong>Zero server footprint.</strong> There is no backend. No data is logged, tracked, or stored anywhere except your own browser. All API calls go directly from your browser to Salesforce or GitHub over HTTPS.
+    </div>
 
     <h3>GitHub token permissions</h3>
     <p>Use a <strong>fine-grained PAT</strong> with the minimum permissions:</p>
     <ul>
-      <li>Repository access: <strong>Only select repositories</strong> → choose the scripts repo only</li>
-      <li>Repository permissions → Contents: <strong>Read-only</strong></li>
-      <li>Everything else: No access</li>
+      <li><strong>Repository access:</strong> Only select repositories → choose the scripts repo only</li>
+      <li><strong>Repository permissions → Contents:</strong> Read-only</li>
+      <li><strong>Everything else:</strong> No access</li>
     </ul>
-    <p>If your org enforces SAML SSO on GitHub, after creating the token click <strong>Configure SSO → Authorize</strong> next to your organization name.</p>
-    <p>For a shared token used by the whole team, create it on a <strong>bot/service account</strong> rather than a personal account — so the token doesn't break if someone leaves the company.</p>
 
-    <h2 id="doc-config">Config reference</h2>
+    <div class="docs-callout info">
+      <strong>SSO-protected organizations:</strong> If your org enforces SAML SSO on GitHub, after creating the token click <strong>Configure SSO → Authorize</strong> next to your organization name. For a shared team token, create it on a <strong>bot/service account</strong> rather than a personal account — so the token doesn't break if someone leaves the company.
+    </div>
+
+    <!-- ═══════════════ CONFIG ═══════════════ -->
+    <h2 id="doc-config"><span class="docs-section-icon">🛠</span>Config reference</h2>
     <p>Edit the <code>CONFIG</code> block near the top of the <code>&lt;script&gt;</code> section in <code>index.html</code>:</p>
+
+    <table class="docs-table">
+      <tr><th>Key</th><th>Default</th><th>Description</th></tr>
+      <tr><td><code>GH_TOKEN</code></td><td><code>''</code> (empty)</td><td>GitHub read-only PAT. Leave empty if users will enter their own token in the UI. <strong style="color:var(--amber)">Do not set in a public repo.</strong></td></tr>
+      <tr><td><code>DEFAULT_REPO</code></td><td><code>''</code> (empty)</td><td>Default repo shown on step 2, e.g. <code>myorg/salesforce-scripts</code></td></tr>
+      <tr><td><code>DEFAULT_PATH</code></td><td><code>scripts/apex/Post Deployment Scripts</code></td><td>Base path inside the repo where script folders live</td></tr>
+      <tr><td><code>DEFAULT_EXTS</code></td><td><code>.txt, .apex</code></td><td>File extensions to look for (comma-separated)</td></tr>
+    </table>
+
     <pre>const CONFIG = {
-  // GitHub read-only PAT for fetching scripts from the repo.
-  // Leave empty if users will enter their own token in the UI.
-  // WARNING: do not set this if index.html is in a public repo.
-  GH_TOKEN: '',            // e.g. 'ghp_xxxxxxxxxxxx'
-
-  // Default repo shown on step 2 (GitHub mode).
-  DEFAULT_REPO: '',        // e.g. 'myorg/salesforce-scripts'
-
-  // Base path inside the repo where script folders live.
+  GH_TOKEN: '',
+  DEFAULT_REPO: '',
   DEFAULT_PATH: 'scripts/apex/Post Deployment Scripts',
-
-  // File extensions to look for (comma-separated).
   DEFAULT_EXTS: '.txt, .apex',
 };</pre>
 
-    <h2 id="doc-faq">FAQ</h2>
+    <!-- ═══════════════ FAQ ═══════════════ -->
+    <h2 id="doc-faq"><span class="docs-section-icon">❓</span>FAQ</h2>
 
-    <h3>Do I need a Salesforce Connected App?</h3>
-    <p><strong>Yes</strong>, for the recommended OAuth method. Ask your admin to create one (1 minute — see instructions on the Connect screen). Alternatively, use the Session ID method with a CORS proxy.</p>
+    <div class="docs-faq-item">
+      <h3>Do I need a Salesforce Connected App?</h3>
+      <p><strong>Yes</strong>, for the recommended OAuth method. Ask your admin to create one (1 minute — see instructions on the Connect screen). Alternatively, use the Session ID method with a CORS proxy.</p>
+    </div>
 
-    <h3>Can I run scripts on production?</h3>
-    <p>Technically yes — the app works against any org you can log into. But it's designed for sandboxes. Be careful. The HTML report gives you a full audit trail of what ran and what the outcome was.</p>
+    <div class="docs-faq-item">
+      <h3>Can I run scripts on production?</h3>
+      <p>Technically yes — the app works against any org you can log into. But it's designed for sandboxes. Be careful. The HTML report gives you a full audit trail of what ran and what the outcome was.</p>
+    </div>
 
-    <h3>What happens if a script fails?</h3>
-    <p>The app logs the error message returned by Salesforce (compile error, exception message, etc.), marks the script as ❌ failed, and continues with the next script. It never stops mid-run. After finishing, the summary shows total passed / failed count, and you can export the full report.</p>
+    <div class="docs-faq-item">
+      <h3>What happens if a script fails?</h3>
+      <p>The app logs the error message returned by Salesforce (compile error, exception message, etc.), marks the script as ❌ failed, and <strong>continues with the next script</strong>. After all scripts finish, the summary shows total passed / failed count. You can also press the <strong>Stop</strong> button at any time to abort the remaining scripts.</p>
+      <p>When finished, export the full report as HTML, CSV, or Excel.</p>
+    </div>
 
-    <h3>How do I control the order scripts run in?</h3>
-    <p>Scripts within a folder run alphabetically. Prefix filenames with numbers: <code>01_create_groups.txt</code>, <code>02_assign_approvers.txt</code>. Folders themselves also run in alphabetical order when all are selected.</p>
+    <div class="docs-faq-item">
+      <h3>How do I control the order scripts run in?</h3>
+      <p>Scripts within a folder run <strong>alphabetically</strong>. Prefix filenames with numbers: <code>01_create_groups.txt</code>, <code>02_assign_approvers.txt</code>. Folders themselves also run in alphabetical order when all are selected.</p>
+    </div>
 
-    <h3>The Salesforce login redirects me but nothing happens</h3>
-    <p>Make sure the Callback URL in your Connected App matches exactly: <code>https://your-org.github.io/repo-name/</code> (with trailing slash). Also ensure CORS is configured: Setup → Security → CORS → add your GitHub Pages origin.</p>
+    <div class="docs-faq-item">
+      <h3>The Salesforce login redirects me but nothing happens</h3>
+      <p>Make sure the <strong>Callback URL</strong> in your Connected App matches exactly: <code>https://your-org.github.io/repo-name/</code> (with trailing slash). Also check that more than 2–10 minutes have passed since creating the Connected App — Salesforce needs time to propagate the settings.</p>
+    </div>
 
-    <h3>I get a 403 error when loading scripts from GitHub</h3>
-    <p>Your PAT probably hasn't been authorized for your organization's SSO. Go to <strong>github.com → Settings → Personal access tokens</strong>, find your token, and click <strong>Configure SSO → Authorize</strong> next to your org name.</p>
+    <div class="docs-faq-item">
+      <h3>I get a 403 error when loading scripts from GitHub</h3>
+      <p>Your PAT probably hasn't been authorized for your organization's SSO. Go to <strong>github.com → Settings → Personal access tokens</strong>, find your token, and click <strong>Configure SSO → Authorize</strong> next to your org name.</p>
+    </div>
 
   </div>
 </div> <!-- /view-docs -->
@@ -1046,8 +1107,6 @@ function init() {
   const origin = location.origin + location.pathname.replace(/\/$/, '');
   const sfCbEl = document.getElementById('sf-callback-display');
   if (sfCbEl) sfCbEl.textContent = origin + '/';
-  const sfCorsEl = document.getElementById('sf-cors-origin');
-  if (sfCorsEl) sfCorsEl.textContent = location.origin;
 
   // Restore saved SF instance
   const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
