@@ -362,15 +362,73 @@
       <!-- Login form (shown when not connected) -->
       <div id="sf-login-form">
 
-        <!-- CORS Proxy -->
-        <div class="field" style="margin-bottom:16px;padding:12px 16px;background:var(--amber-dim);border:1px solid rgba(251,191,36,0.15);border-radius:8px">
-          <label style="color:var(--amber)">🌐 CORS Proxy URL <span style="font-weight:normal">(обязательно)</span></label>
-          <input id="sf-cors-proxy" placeholder="https://your-worker.workers.dev" value="" style="margin-bottom:6px">
-          <details>
-            <summary style="font-size:11px;color:var(--muted);cursor:pointer">📖 Как создать прокси бесплатно за 1 мин</summary>
+        <!-- Method tabs: OAuth first (recommended, no proxy needed) -->
+        <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+          <button class="btn btn-sm" id="sf-tab-oauth" onclick="switchSFTab('oauth')" style="background:var(--accent);color:#fff">🔑 OAuth (SSO)</button>
+          <button class="btn btn-sm" id="sf-tab-token" onclick="switchSFTab('token')" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border)">📋 Session ID</button>
+        </div>
+
+        <!-- OAuth tab (default — PKCE flow, no proxy needed) -->
+        <div id="sf-method-oauth">
+          <div class="grid2">
+            <div class="field">
+              <label>Instance URL <span style="color:var(--muted);font-weight:normal">(sandbox или production)</span></label>
+              <input id="sf-instance-oauth" placeholder="https://yourcompany--sandbox.sandbox.my.salesforce.com" value="">
+            </div>
+            <div class="field">
+              <label>Consumer Key <span style="color:var(--muted);font-weight:normal">(из Connected App)</span></label>
+              <input id="sf-client-id" placeholder="3MVG9..." value="">
+            </div>
+          </div>
+          <details style="margin-bottom:12px">
+            <summary style="font-size:11px;color:var(--muted);cursor:pointer">📖 Как создать Connected App (попросите админа, 1 мин)</summary>
             <div style="font-size:11px;color:var(--muted);line-height:1.9;background:var(--surface2);padding:12px;border-radius:8px;margin-top:6px">
-              Браузер блокирует запросы к SF API с другого домена (CORS). Прокси обходит это.<br><br>
-              <strong>Cloudflare Worker (бесплатно):</strong><br>
+              <strong>Скопируйте это админу:</strong><br><br>
+              1. Setup → App Manager → <strong>New Connected App</strong><br>
+              2. Заполните:<br>
+              &nbsp;&nbsp;• Connected App Name: <code>Apex Runner</code><br>
+              &nbsp;&nbsp;• Contact Email: ваш email<br>
+              &nbsp;&nbsp;• ✅ Enable OAuth Settings<br>
+              &nbsp;&nbsp;• Callback URL: <code id="sf-callback-display"></code><br>
+              &nbsp;&nbsp;• Selected OAuth Scopes: <strong>Manage user data via APIs (api)</strong><br>
+              &nbsp;&nbsp;• ✅ Require Proof Key for Code Exchange (PKCE)<br>
+              &nbsp;&nbsp;• ❌ Require Secret for Web Server Flow — <strong>снять галку!</strong><br>
+              3. Save → подождите 2–10 мин<br>
+              4. Скопируйте <strong>Consumer Key</strong> и вставьте его выше<br><br>
+              <strong>Также добавьте CORS:</strong><br>
+              Setup → Security → CORS → New → Origin URL: <code id="sf-cors-origin"></code>
+            </div>
+          </details>
+          <div style="background:var(--green-dim);border:1px solid rgba(61,214,140,0.15);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:11px;color:var(--green)">
+            ✅ Рекомендуемый способ. Работает с SSO. Прокси <strong>не нужен</strong>. Данные идут напрямую в Salesforce.
+          </div>
+          <div id="sf-status-oauth" class="mt8"></div>
+          <div class="mt8">
+            <button class="btn btn-sf" id="sf-btn-oauth" onclick="connectSFOAuth()">Login with Salesforce</button>
+          </div>
+        </div>
+
+        <!-- Session ID tab (fallback — needs CORS proxy) -->
+        <div id="sf-method-token" style="display:none">
+          <div class="field">
+            <label>Instance URL <span style="color:var(--muted);font-weight:normal">(из адресной строки до .com)</span></label>
+            <input id="sf-instance-token" placeholder="https://yourcompany.my.salesforce.com" value="">
+          </div>
+          <div class="field">
+            <label>Session ID</label>
+            <input id="sf-manual-token" type="password" placeholder="00D..." autocomplete="off">
+          </div>
+          <div class="field">
+            <label>CORS Proxy URL <span style="color:var(--amber)">(обязательно для Session ID)</span></label>
+            <input id="sf-cors-proxy" placeholder="https://your-worker.workers.dev" value="">
+          </div>
+          <details style="margin-bottom:12px">
+            <summary style="font-size:11px;color:var(--muted);cursor:pointer">📖 Как получить Session ID + настроить прокси</summary>
+            <div style="font-size:11px;color:var(--muted);line-height:1.9;background:var(--surface2);padding:12px;border-radius:8px;margin-top:6px">
+              <strong>Session ID:</strong><br>
+              1. Откройте Salesforce → <strong>F12</strong> → Network → перезагрузить (F5)<br>
+              2. Клик на запрос → Headers → Cookie → значение <code>sid=</code><br><br>
+              <strong>CORS Proxy (Cloudflare Worker, бесплатно):</strong><br>
               1. <code>dash.cloudflare.com</code> → Workers & Pages → Create Worker<br>
               2. Замените код на:<br>
               <div style="background:var(--surface);padding:8px;border-radius:4px;margin:6px 0;font-family:var(--mono);font-size:10px;white-space:pre;overflow-x:auto">export default {
@@ -402,94 +460,12 @@
               3. Deploy → скопируйте URL воркера сюда
             </div>
           </details>
-        </div>
-
-        <!-- Method tabs: Session ID first (most common for SSO users) -->
-        <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-          <button class="btn btn-sm" id="sf-tab-token" onclick="switchSFTab('token')" style="background:var(--accent);color:#fff">🔑 Session ID (SSO)</button>
-          <button class="btn btn-sm" id="sf-tab-login" onclick="switchSFTab('login')" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border)">👤 Логин + Пароль</button>
-          <button class="btn btn-sm" id="sf-tab-oauth" onclick="switchSFTab('oauth')" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border)">🔒 OAuth</button>
-        </div>
-
-        <!-- Token tab (default — best for SSO) -->
-        <div id="sf-method-token">
-          <div class="field">
-            <label>Instance URL <span style="color:var(--muted);font-weight:normal">(из адресной строки до .com)</span></label>
-            <input id="sf-instance-token" placeholder="https://yourcompany.my.salesforce.com" value="">
+          <div style="background:var(--amber-dim);border:1px solid rgba(251,191,36,0.15);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:11px;color:var(--amber)">
+            ⚠️ Запасной способ. Нужен CORS proxy. Используйте если нет Connected App.
           </div>
-          <div class="field">
-            <label>Session ID</label>
-            <input id="sf-manual-token" type="password" placeholder="00D..." autocomplete="off">
-          </div>
-          <details style="margin-bottom:12px">
-            <summary style="font-size:11px;color:var(--muted);cursor:pointer">📖 Как получить Session ID</summary>
-            <div style="font-size:11px;color:var(--muted);line-height:1.9;background:var(--surface2);padding:12px;border-radius:8px;margin-top:6px">
-              1. Откройте Salesforce в браузере (залогиньтесь через SSO)<br>
-              2. <strong>F12</strong> → вкладка <strong>Network</strong> → перезагрузите страницу (F5)<br>
-              3. Кликните на любой запрос → <strong>Headers</strong> → найдите <strong>Cookie</strong><br>
-              4. Скопируйте значение после <code style="background:var(--surface);padding:1px 5px;border-radius:3px">sid=</code> до ближайшей <code>;</code>
-            </div>
-          </details>
           <div id="sf-status-token" class="mt8"></div>
           <div class="mt8">
             <button class="btn btn-sf" id="sf-btn-token" onclick="connectSFToken()">Подключиться</button>
-          </div>
-        </div>
-
-        <!-- Login tab (SOAP) -->
-        <div id="sf-method-login" style="display:none">
-          <div class="field">
-            <label>Instance URL</label>
-            <input id="sf-instance" placeholder="https://yourcompany.my.salesforce.com" value="">
-          </div>
-          <div class="grid2">
-            <div class="field">
-              <label>Username</label>
-              <input id="sf-username" placeholder="user@company.com" autocomplete="username">
-            </div>
-            <div class="field">
-              <label>Password + Security Token</label>
-              <input id="sf-password" type="password" placeholder="passwordSecurityToken" autocomplete="current-password">
-            </div>
-          </div>
-          <details style="margin-bottom:12px">
-            <summary style="font-size:11px;color:var(--muted);cursor:pointer">📖 Где взять Security Token</summary>
-            <div style="font-size:11px;color:var(--muted);line-height:1.9;background:var(--surface2);padding:12px;border-radius:8px;margin-top:6px">
-              <strong>Settings → Reset My Security Token</strong> → придёт на email.<br>
-              Вставьте пароль и токен слитно: <code>myPassword123ABCtoken</code><br>
-              <strong>Не работает с SSO</strong> — используйте Session ID.
-            </div>
-          </details>
-          <div id="sf-status" class="mt8"></div>
-          <div class="mt8">
-            <button class="btn btn-sf" id="sf-btn" onclick="connectSFLogin()">Войти</button>
-          </div>
-        </div>
-
-        <!-- OAuth tab -->
-        <div id="sf-method-oauth" style="display:none">
-          <div class="grid2">
-            <div class="field">
-              <label>Instance URL</label>
-              <input id="sf-instance-oauth" placeholder="https://yourcompany.my.salesforce.com" value="">
-            </div>
-            <div class="field">
-              <label>Consumer Key</label>
-              <input id="sf-client-id" placeholder="3MVG9..." value="">
-            </div>
-          </div>
-          <details style="margin-bottom:12px">
-            <summary style="font-size:11px;color:var(--muted);cursor:pointer">📖 Как создать Connected App</summary>
-            <div style="font-size:11px;color:var(--muted);line-height:1.9;background:var(--surface2);padding:12px;border-radius:8px;margin-top:6px">
-              1. Setup → App Manager → <strong>New Connected App</strong><br>
-              2. Callback URL: <code id="sf-callback-display"></code><br>
-              3. Scopes: <code>api</code>, <code>refresh_token</code><br>
-              4. Save → подождите 2-10 мин → скопируйте Consumer Key
-            </div>
-          </details>
-          <div id="sf-status-oauth" class="mt8"></div>
-          <div class="mt8">
-            <button class="btn btn-sf" id="sf-btn-oauth" onclick="connectSFOAuth()">Login with SSO</button>
           </div>
         </div>
       </div>
@@ -775,12 +751,15 @@
     </div>
 
     <h2 id="doc-sf">Salesforce login (SSO)</h2>
-    <p>The app uses <strong>OAuth 2.0 PKCE flow</strong> with the public <code>PlatformCLI</code> client ID — the same one Salesforce CLI uses internally. This means <strong>no Connected App setup is required</strong>.</p>
-    <p>PKCE (Proof Key for Code Exchange) is a secure OAuth flow designed for browser-based apps. It does not require a client secret. When you click Login, the app generates a one-time code challenge, redirects you to Salesforce, and exchanges the returned code for an access token — all without any server involvement.</p>
-    <p>SSO works transparently: Salesforce's login page shows your company's SSO button exactly as it does when you log in normally. The app doesn't need to know anything about your SSO provider.</p>
+    <p>The app uses <strong>OAuth 2.0 Authorization Code flow with PKCE</strong> — a secure standard for browser-based apps. It requires a <strong>Connected App</strong> in your Salesforce org (your admin can create it in 1 minute).</p>
+    <p>PKCE (Proof Key for Code Exchange) does not require a client secret. When you click Login, the app generates a one-time code challenge, redirects you to Salesforce, and exchanges the returned code for an access token — all without any server or proxy.</p>
+    <p>SSO works transparently: Salesforce's login page shows your company's SSO button exactly as it does when you log in normally.</p>
 
     <div class="docs-callout info">
-      If you want to use your own Connected App instead of <code>PlatformCLI</code> (for example to restrict access to specific users), open <strong>Advanced settings</strong> on the Connect screen and enter your Consumer Key. Setup: App Manager → New Connected App → Enable OAuth → PKCE enabled, no secret required, callback URL set to your GitHub Pages URL.
+      <strong>Connected App setup (admin, 1 min):</strong><br>
+      Setup → App Manager → New Connected App → Enable OAuth → Callback URL = your GitHub Pages URL → Scope: <code>api</code> → ✅ PKCE enabled → ❌ Require Secret = OFF → Save → copy Consumer Key.
+      <br><br>
+      Also add CORS: Setup → Security → CORS → New → Origin URL = <code>https://your-org.github.io</code>
     </div>
 
     <h2 id="doc-scripts">Script sources</h2>
@@ -861,7 +840,7 @@
     <h2 id="doc-faq">FAQ</h2>
 
     <h3>Do I need a Salesforce Connected App?</h3>
-    <p>No. The app uses the public <code>PlatformCLI</code> client ID which works on any org without any setup. If you want tighter control over who can use the app, you can create your own Connected App and enter its Consumer Key in Advanced settings.</p>
+    <p><strong>Yes</strong>, for the recommended OAuth method. Ask your admin to create one (1 minute — see instructions on the Connect screen). Alternatively, use the Session ID method with a CORS proxy.</p>
 
     <h3>Can I run scripts on production?</h3>
     <p>Technically yes — the app works against any org you can log into. But it's designed for sandboxes. Be careful. The HTML report gives you a full audit trail of what ran and what the outcome was.</p>
@@ -873,7 +852,7 @@
     <p>Scripts within a folder run alphabetically. Prefix filenames with numbers: <code>01_create_groups.txt</code>, <code>02_assign_approvers.txt</code>. Folders themselves also run in alphabetical order when all are selected.</p>
 
     <h3>The Salesforce login redirects me but nothing happens</h3>
-    <p>Make sure the callback URL registered in your Connected App (or the default PlatformCLI app) matches exactly the URL of this page including the trailing slash. Also check that pop-ups are not blocked.</p>
+    <p>Make sure the Callback URL in your Connected App matches exactly: <code>https://your-org.github.io/repo-name/</code> (with trailing slash). Also ensure CORS is configured: Setup → Security → CORS → add your GitHub Pages origin.</p>
 
     <h3>I get a 403 error when loading scripts from GitHub</h3>
     <p>Your PAT probably hasn't been authorized for your organization's SSO. Go to <strong>github.com → Settings → Personal access tokens</strong>, find your token, and click <strong>Configure SSO → Authorize</strong> next to your org name.</p>
@@ -947,11 +926,12 @@ function init() {
   const origin = location.origin + location.pathname.replace(/\/$/, '');
   const sfCbEl = document.getElementById('sf-callback-display');
   if (sfCbEl) sfCbEl.textContent = origin + '/';
+  const sfCorsEl = document.getElementById('sf-cors-origin');
+  if (sfCorsEl) sfCorsEl.textContent = location.origin;
 
   // Restore saved SF instance
   const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
   if (saved.sfInstance) {
-    document.getElementById('sf-instance').value       = saved.sfInstance;
     document.getElementById('sf-instance-token').value = saved.sfInstance;
     document.getElementById('sf-instance-oauth').value = saved.sfInstance;
   }
@@ -974,18 +954,14 @@ function init() {
 
   // Handle OAuth callbacks
   const params = new URLSearchParams(location.search);
-  const hash   = new URLSearchParams(location.hash.slice(1));
 
-  if (hash.get('access_token')) {
-    STATE.sfToken    = hash.get('access_token');
-    STATE.sfInstance = hash.get('instance_url') || sessionStorage.getItem('sf_instance_pending') || document.getElementById('sf-instance').value;
-    sessionStorage.setItem('sf_token', STATE.sfToken);
-    sessionStorage.setItem('sf_instance', STATE.sfInstance);
-    history.replaceState({}, '', location.pathname);
-    fetchSFUser().then(() => onSFConnected());
+  if (params.get('code')) {
+    // OAuth PKCE: returned with authorization code
+    handleOAuthCodeCallback(params.get('code'));
+    return; // handleOAuthCodeCallback will call onSFConnected
   } else if (params.get('error')) {
     const desc = decodeURIComponent(params.get('error_description') || params.get('error'));
-    showStatus('sf-status', '❌ ' + desc, 'fail');
+    showStatus('sf-status-oauth', '❌ ' + desc, 'fail');
     history.replaceState({}, '', location.pathname);
   }
 
@@ -997,13 +973,12 @@ function init() {
 }
 
 function saveConfig() {
-  const inst = document.getElementById('sf-instance').value
-    || document.getElementById('sf-instance-token').value
-    || document.getElementById('sf-instance-oauth').value;
+  const inst = document.getElementById('sf-instance-oauth').value
+    || document.getElementById('sf-instance-token').value;
   localStorage.setItem(STORAGE_KEY, JSON.stringify({
     sfClientId:  document.getElementById('sf-client-id').value,
     sfInstance:  inst,
-    sfCorsProxy: document.getElementById('sf-cors-proxy').value,
+    sfCorsProxy: (document.getElementById('sf-cors-proxy')?.value || ''),
     scriptsPath: document.getElementById('scripts-path').value,
     fileExts:    document.getElementById('file-exts').value,
   }));
@@ -1015,7 +990,7 @@ function ghTab() {} // stub — больше не нужен
 // SALESFORCE AUTH
 // ══════════════════════════════════════════
 function switchSFTab(tab) {
-  const tabs = ['login', 'token', 'oauth'];
+  const tabs = ['token', 'oauth'];
   tabs.forEach(t => {
     const panel = document.getElementById('sf-method-' + t);
     const btn   = document.getElementById('sf-tab-' + t);
@@ -1029,100 +1004,120 @@ function switchSFTab(tab) {
 
 // Get instance URL from whichever tab has it
 function getSFInstance() {
-  return (document.getElementById('sf-instance').value
-    || document.getElementById('sf-instance-token').value
-    || document.getElementById('sf-instance-oauth').value).trim().replace(/\/$/, '');
+  return (document.getElementById('sf-instance-oauth').value
+    || document.getElementById('sf-instance-token').value).trim().replace(/\/$/, '');
 }
 
-// Method 1: SOAP Login (username + password) — no Connected App needed
-async function connectSFLogin() {
+// ══════════════════════════════════════════
+// OAuth 2.0 PKCE helpers
+// ══════════════════════════════════════════
+function generateCodeVerifier() {
+  const arr = new Uint8Array(32);
+  crypto.getRandomValues(arr);
+  return btoa(String.fromCharCode(...arr)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+async function generateCodeChallenge(verifier) {
+  const data = new TextEncoder().encode(verifier);
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  return btoa(String.fromCharCode(...new Uint8Array(hash))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+// Method 1: OAuth PKCE (recommended — no proxy needed)
+async function connectSFOAuth() {
   saveConfig();
-  const instance = document.getElementById('sf-instance').value.trim().replace(/\/$/, '');
-  const username = document.getElementById('sf-username').value.trim();
-  const password = document.getElementById('sf-password').value;
-  const proxy    = (document.getElementById('sf-cors-proxy')?.value || '').trim().replace(/\/$/, '');
-  if (!instance) { alert('Введите Instance URL'); return; }
-  if (!username || !password) { alert('Введите username и password + security token'); return; }
+  const clientId = document.getElementById('sf-client-id').value.trim();
+  const instance = document.getElementById('sf-instance-oauth').value.trim().replace(/\/$/, '');
+  if (!instance) { alert('Введите Instance URL вашей org'); return; }
+  if (!clientId) { alert('Введите Consumer Key из Connected App'); return; }
 
-  const btn = document.getElementById('sf-btn');
-  btn.disabled = true;
-  btn.textContent = '⏳ Вхожу…';
-  showStatus('sf-status', '⏳ Вхожу…', 'warn');
+  const codeVerifier = generateCodeVerifier();
+  const codeChallenge = await generateCodeChallenge(codeVerifier);
 
-  const soapBody = `<?xml version="1.0" encoding="utf-8"?>
-<env:Envelope xmlns:xsd="http://www.w3.org/2001/XMLSchema"
-  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xmlns:env="http://schemas.xmlsoap.org/soap/envelope/">
-  <env:Body>
-    <n1:login xmlns:n1="urn:partner.soap.sforce.com">
-      <n1:username>${xmlEscape(username)}</n1:username>
-      <n1:password>${xmlEscape(password)}</n1:password>
-    </n1:login>
-  </env:Body>
-</env:Envelope>`;
+  // Save PKCE verifier + context for after redirect
+  sessionStorage.setItem('sf_pkce_verifier', codeVerifier);
+  sessionStorage.setItem('sf_pkce_client_id', clientId);
+  sessionStorage.setItem('sf_instance_pending', instance);
+
+  const redirect = location.origin + location.pathname;
+  const url = `${instance}/services/oauth2/authorize`
+    + `?response_type=code`
+    + `&client_id=${encodeURIComponent(clientId)}`
+    + `&redirect_uri=${encodeURIComponent(redirect)}`
+    + `&code_challenge=${encodeURIComponent(codeChallenge)}`
+    + `&code_challenge_method=S256`
+    + `&scope=${encodeURIComponent('api')}`;
+
+  showStatus('sf-status-oauth', '⏳ Перенаправляю на Salesforce…', 'warn');
+  location.href = url;
+}
+
+// Called from init() when returning from OAuth with ?code=
+async function handleOAuthCodeCallback(code) {
+  const verifier = sessionStorage.getItem('sf_pkce_verifier');
+  const clientId = sessionStorage.getItem('sf_pkce_client_id');
+  const instance = sessionStorage.getItem('sf_instance_pending');
+
+  // Clean URL
+  history.replaceState({}, '', location.pathname);
+
+  if (!verifier || !clientId || !instance) {
+    showStatus('sf-status-oauth', '❌ Потерян PKCE контекст — попробуйте войти снова', 'fail');
+    return;
+  }
+
+  showStatus('sf-status-oauth', '⏳ Получаю токен…', 'warn');
 
   try {
-    // Use instance URL directly for SOAP login (works for both production and sandbox)
-    const soapEndpoint = `${instance}/services/Soap/u/59.0`;
-    const fetchUrl = proxy ? proxy + '/' + soapEndpoint : soapEndpoint;
-    console.log('[SF SOAP Login] endpoint:', soapEndpoint, '| via proxy:', !!proxy);
-    const res = await fetch(fetchUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'text/xml; charset=utf-8',
-        'SOAPAction': 'login',
-      },
-      body: soapBody,
+    const redirect = location.origin + location.pathname;
+    const body = new URLSearchParams({
+      grant_type: 'authorization_code',
+      code: code,
+      client_id: clientId,
+      redirect_uri: redirect,
+      code_verifier: verifier,
     });
-    const text = await res.text();
-    const sessionId  = text.match(/<sessionId>([^<]+)<\/sessionId>/)?.[1];
-    const serverUrl  = text.match(/<serverUrl>([^<]+)<\/serverUrl>/)?.[1];
-    const faultMsg   = text.match(/<faultstring>([^<]+)<\/faultstring>/)?.[1];
 
-    if (sessionId) {
-      const realInstance = serverUrl ? serverUrl.match(/https:\/\/[^/]+/)?.[0] : instance;
-      STATE.sfToken    = sessionId;
-      STATE.sfInstance = realInstance || instance;
-      sessionStorage.setItem('sf_token', STATE.sfToken);
+    // Token endpoint supports CORS natively — no proxy needed!
+    const res = await fetch(`${instance}/services/oauth2/token`, {
+      method: 'POST',
+      body: body,
+    });
+    const data = await res.json();
+
+    if (data.access_token) {
+      STATE.sfToken    = data.access_token;
+      STATE.sfInstance = data.instance_url || instance;
+      sessionStorage.setItem('sf_token', data.access_token);
       sessionStorage.setItem('sf_instance', STATE.sfInstance);
-      try { await fetchSFUser(); } catch(e) { STATE.sfUser = username; }
-      showStatus('sf-status', '✅ Подключено', 'pass');
+
+      // Clean up PKCE session data
+      sessionStorage.removeItem('sf_pkce_verifier');
+      sessionStorage.removeItem('sf_pkce_client_id');
+      sessionStorage.removeItem('sf_instance_pending');
+
+      try { await fetchSFUser(); } catch(e) { STATE.sfUser = '(OAuth)'; }
+      showStatus('sf-status-oauth', '✅ Подключено', 'pass');
       onSFConnected();
     } else {
-      showStatus('sf-status', '❌ ' + (faultMsg || 'Неизвестная ошибка'), 'fail');
+      const errMsg = data.error_description || data.error || JSON.stringify(data);
+      showStatus('sf-status-oauth', '❌ ' + errMsg, 'fail');
     }
-  } catch (e) {
-    console.error('[SF SOAP Login] error:', e);
+  } catch(e) {
     let msg = e.message;
-    if (msg === 'Failed to fetch') {
-      if (!proxy) {
-        msg = 'CORS ошибка — заполните CORS Proxy URL выше (без прокси браузер блокирует запросы к SF)';
-      } else {
-        msg = `Не удалось подключиться через прокси.\nПрокси: ${proxy}\nInstance: ${instance}\n\nПроверьте оба URL.`;
-      }
-    }
-    showStatus('sf-status', '❌ ' + msg, 'fail');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Войти';
+    if (msg === 'Failed to fetch') msg = 'Ошибка сети — проверьте Instance URL и что CORS настроен в Salesforce';
+    showStatus('sf-status-oauth', '❌ ' + msg, 'fail');
   }
 }
 
-function xmlEscape(s) {
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-// Method 2: Manual token paste — verify with a real API call
+// Method 2: Session ID + CORS proxy (fallback)
 async function connectSFToken() {
   saveConfig();
   const instance = document.getElementById('sf-instance-token').value.trim().replace(/\/$/, '');
   const token    = document.getElementById('sf-manual-token').value.trim();
   const proxy    = (document.getElementById('sf-cors-proxy')?.value || '').trim().replace(/\/$/, '');
-  if (!instance) { alert('Введите Instance URL (скопируйте из адресной строки до .com)'); return; }
-  if (!token) { alert('Вставьте Session ID из Cookie (sid=...)'); return; }
-  if (!proxy) {
-    if (!confirm('CORS Proxy URL не указан — запросы к Salesforce API скорее всего будут заблокированы браузером.\n\nПродолжить без прокси?')) return;
-  }
+  if (!instance) { alert('Введите Instance URL'); return; }
+  if (!token) { alert('Вставьте Session ID'); return; }
+  if (!proxy) { alert('Для Session ID обязательно нужен CORS Proxy URL — заполните поле выше'); return; }
 
   STATE.sfToken    = token;
   STATE.sfInstance = instance;
@@ -1132,19 +1127,17 @@ async function connectSFToken() {
   const btn = document.getElementById('sf-btn-token');
   btn.disabled = true;
   btn.textContent = '⏳ Проверяю…';
-  showStatus('sf-status-token', '⏳ Проверяю подключение к Salesforce…', 'warn');
+  showStatus('sf-status-token', '⏳ Проверяю подключение…', 'warn');
 
   try {
-    // Lightweight check: GET /services/data/ returns API versions if token is valid
     const res = await sfFetch('/services/data/');
     if (!res.ok) {
       const text = await res.text().catch(() => '');
       throw new Error(`HTTP ${res.status}: ${text.slice(0, 150) || res.statusText}`);
     }
     const data = await res.json();
-    if (!Array.isArray(data)) throw new Error('Unexpected response — not a Salesforce org');
+    if (!Array.isArray(data)) throw new Error('Unexpected response');
 
-    // Token works! Try to get user info (optional)
     try { await fetchSFUser(); } catch(e) { STATE.sfUser = '(сессия)'; }
     showStatus('sf-status-token', '✅ Подключено', 'pass');
     onSFConnected();
@@ -1154,35 +1147,12 @@ async function connectSFToken() {
     sessionStorage.removeItem('sf_token');
     sessionStorage.removeItem('sf_instance');
     let msg = e.message;
-    if (msg === 'Failed to fetch') {
-      msg = proxy
-        ? 'Не удалось подключиться — проверьте URL прокси и Instance URL'
-        : 'CORS ошибка — укажите CORS Proxy URL выше';
-    }
+    if (msg === 'Failed to fetch') msg = 'Не удалось подключиться — проверьте Proxy URL, Instance URL и Session ID';
     showStatus('sf-status-token', '❌ ' + msg, 'fail');
   } finally {
     btn.disabled = false;
     btn.textContent = 'Подключиться';
   }
-}
-
-// Method 3: OAuth Implicit flow (requires Connected App)
-async function connectSFOAuth() {
-  saveConfig();
-  const clientId = document.getElementById('sf-client-id').value.trim();
-  const instance = document.getElementById('sf-instance-oauth').value.trim().replace(/\/$/, '');
-  if (!instance) { alert('Введите Instance URL вашей org'); return; }
-  if (!clientId) { alert('Введите Consumer Key из Connected App'); return; }
-
-  sessionStorage.setItem('sf_instance_pending', instance);
-
-  const redirect = location.origin + location.pathname;
-  const url = `${instance}/services/oauth2/authorize`
-    + `?response_type=token`
-    + `&client_id=${encodeURIComponent(clientId)}`
-    + `&redirect_uri=${encodeURIComponent(redirect)}`
-    + `&scope=${encodeURIComponent('api refresh_token')}`;
-  location.href = url;
 }
 
 async function fetchSFUser() {
