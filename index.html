@@ -1040,9 +1040,13 @@ async function connectSFLogin() {
   const instance = document.getElementById('sf-instance').value.trim().replace(/\/$/, '');
   const username = document.getElementById('sf-username').value.trim();
   const password = document.getElementById('sf-password').value;
+  const proxy    = (document.getElementById('sf-cors-proxy')?.value || '').trim().replace(/\/$/, '');
   if (!instance) { alert('Введите Instance URL'); return; }
   if (!username || !password) { alert('Введите username и password + security token'); return; }
 
+  const btn = document.getElementById('sf-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Вхожу…';
   showStatus('sf-status', '⏳ Вхожу…', 'warn');
 
   const soapBody = `<?xml version="1.0" encoding="utf-8"?>
@@ -1060,7 +1064,9 @@ async function connectSFLogin() {
   try {
     const loginUrl = instance.includes('login.salesforce.com') || instance.includes('test.salesforce.com')
       ? instance : 'https://login.salesforce.com';
-    const res = await fetch(`${loginUrl}/services/Soap/u/59.0`, {
+    const soapEndpoint = `${loginUrl}/services/Soap/u/59.0`;
+    const fetchUrl = proxy ? proxy + '/' + soapEndpoint : soapEndpoint;
+    const res = await fetch(fetchUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'text/xml; charset=utf-8',
@@ -1074,19 +1080,28 @@ async function connectSFLogin() {
     const faultMsg   = text.match(/<faultstring>([^<]+)<\/faultstring>/)?.[1];
 
     if (sessionId) {
-      // Extract real instance from serverUrl
       const realInstance = serverUrl ? serverUrl.match(/https:\/\/[^/]+/)?.[0] : instance;
       STATE.sfToken    = sessionId;
       STATE.sfInstance = realInstance || instance;
       sessionStorage.setItem('sf_token', STATE.sfToken);
       sessionStorage.setItem('sf_instance', STATE.sfInstance);
-      await fetchSFUser();
+      try { await fetchSFUser(); } catch(e) { STATE.sfUser = username; }
+      showStatus('sf-status', '✅ Подключено', 'pass');
       onSFConnected();
     } else {
       showStatus('sf-status', '❌ ' + (faultMsg || 'Неизвестная ошибка'), 'fail');
     }
   } catch (e) {
-    showStatus('sf-status', '❌ ' + e.message + ' — проверьте CORS (Setup → CORS → ' + location.origin + ')', 'fail');
+    let msg = e.message;
+    if (msg === 'Failed to fetch') {
+      msg = proxy
+        ? 'Не удалось подключиться — проверьте URL прокси и Instance URL'
+        : 'CORS ошибка — укажите CORS Proxy URL выше';
+    }
+    showStatus('sf-status', '❌ ' + msg, 'fail');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Войти';
   }
 }
 
@@ -1094,12 +1109,12 @@ function xmlEscape(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// Method 2: Manual token paste (no verification — just accept & proceed)
+// Method 2: Manual token paste — verify with a real API call
 async function connectSFToken() {
   saveConfig();
   const instance = document.getElementById('sf-instance-token').value.trim().replace(/\/$/, '');
   const token    = document.getElementById('sf-manual-token').value.trim();
-  const proxy    = (document.getElementById('sf-cors-proxy')?.value || '').trim();
+  const proxy    = (document.getElementById('sf-cors-proxy')?.value || '').trim().replace(/\/$/, '');
   if (!instance) { alert('Введите Instance URL (скопируйте из адресной строки до .com)'); return; }
   if (!token) { alert('Вставьте Session ID из Cookie (sid=...)'); return; }
   if (!proxy) {
@@ -1111,15 +1126,41 @@ async function connectSFToken() {
   sessionStorage.setItem('sf_token', token);
   sessionStorage.setItem('sf_instance', instance);
 
-  // Try to get user info, but don't fail if CORS blocks it
-  showStatus('sf-status-token', '⏳ Подключаюсь…', 'warn');
+  const btn = document.getElementById('sf-btn-token');
+  btn.disabled = true;
+  btn.textContent = '⏳ Проверяю…';
+  showStatus('sf-status-token', '⏳ Проверяю подключение к Salesforce…', 'warn');
+
   try {
-    await fetchSFUser();
+    // Lightweight check: GET /services/data/ returns API versions if token is valid
+    const res = await sfFetch('/services/data/');
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`HTTP ${res.status}: ${text.slice(0, 150) || res.statusText}`);
+    }
+    const data = await res.json();
+    if (!Array.isArray(data)) throw new Error('Unexpected response — not a Salesforce org');
+
+    // Token works! Try to get user info (optional)
+    try { await fetchSFUser(); } catch(e) { STATE.sfUser = '(сессия)'; }
+    showStatus('sf-status-token', '✅ Подключено', 'pass');
+    onSFConnected();
   } catch(e) {
-    // CORS may block userinfo — that's OK, the token may still work for API calls
-    STATE.sfUser = '(сессия)';
+    STATE.sfToken = null;
+    STATE.sfInstance = null;
+    sessionStorage.removeItem('sf_token');
+    sessionStorage.removeItem('sf_instance');
+    let msg = e.message;
+    if (msg === 'Failed to fetch') {
+      msg = proxy
+        ? 'Не удалось подключиться — проверьте URL прокси и Instance URL'
+        : 'CORS ошибка — укажите CORS Proxy URL выше';
+    }
+    showStatus('sf-status-token', '❌ ' + msg, 'fail');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Подключиться';
   }
-  onSFConnected();
 }
 
 // Method 3: OAuth Implicit flow (requires Connected App)
@@ -1488,26 +1529,33 @@ function renderZipFolders() {
   let totalFiles = 0;
   Object.keys(groups).sort().forEach(folder => {
     const files = groups[folder].sort((a, b) => a.name.localeCompare(b.name));
+    const nonEmpty = files.filter(f => (zipFiles[f.fullPath] || '').trim());
     totalFiles += files.length;
     const item  = document.createElement('div');
     item.className = 'folder-item';
     const safeAttr = folder.replace(/"/g, '&quot;');
+    const allEmpty = nonEmpty.length === 0;
     item.innerHTML = `
       <div class="folder-header" onclick="toggleFolder(this)">
-        <input type="checkbox" class="folder-cb" data-folder="${safeAttr}" checked onclick="event.stopPropagation();syncFolder(this)">
+        <input type="checkbox" class="folder-cb" data-folder="${safeAttr}" ${allEmpty ? 'disabled' : 'checked'} onclick="event.stopPropagation();syncFolder(this)">
         <span style="opacity:0.5">📁</span>
         <span class="folder-name">${escHtml(folder)}</span>
-        <span class="folder-count">${files.length} скриптов</span>
+        <span class="folder-count">${nonEmpty.length}/${files.length} скриптов</span>
         <span style="color:var(--muted);font-size:11px;margin-left:4px">▾</span>
       </div>
       <div class="folder-scripts">
-        ${files.map(f => `
-          <div class="script-item">
+        ${files.map(f => {
+          const empty = !(zipFiles[f.fullPath] || '').trim();
+          return `
+          <div class="script-item" ${empty ? 'style="opacity:0.45"' : ''}>
             <input type="checkbox" class="script-cb"
               data-folder="${safeAttr}" data-file="${escHtml(f.name)}"
-              data-zip-path="${escHtml(f.fullPath)}" data-source="zip" checked>
+              data-zip-path="${escHtml(f.fullPath)}" data-source="zip"
+              ${empty ? 'disabled' : 'checked'}>
             <span>${escHtml(f.name)}</span>
-          </div>`).join('')}
+            ${empty ? '<span style="font-size:10px;color:var(--amber);margin-left:4px">(пустой файл)</span>' : ''}
+          </div>`;
+        }).join('')}
       </div>`;
     list.appendChild(item);
   });
@@ -1640,11 +1688,11 @@ function toggleFolder(header) {
 function syncFolder(cb) {
   const folder  = cb.dataset.folder;
   const checked = cb.checked;
-  document.querySelectorAll(`.script-cb[data-folder="${folder}"]`).forEach(s => s.checked = checked);
+  document.querySelectorAll(`.script-cb[data-folder="${folder}"]`).forEach(s => { if (!s.disabled) s.checked = checked; });
 }
 
 function selectAll(v) {
-  document.querySelectorAll('.folder-cb, .script-cb').forEach(cb => cb.checked = v);
+  document.querySelectorAll('.folder-cb, .script-cb').forEach(cb => { if (!cb.disabled) cb.checked = v; });
 }
 
 function collectSelected() {
@@ -1704,7 +1752,7 @@ async function runScripts() {
       let body;
       if (s.source === 'zip') {
         body = zipFiles[s.zipPath];
-        if (!body) throw new Error('File not found in archive: ' + s.zipPath);
+        if (body == null) throw new Error('File not found in archive: ' + s.zipPath);
       } else {
         const raw = await fetch(s.url);
         body = await raw.text();
