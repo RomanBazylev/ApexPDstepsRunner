@@ -1062,10 +1062,10 @@ async function connectSFLogin() {
 </env:Envelope>`;
 
   try {
-    const loginUrl = instance.includes('login.salesforce.com') || instance.includes('test.salesforce.com')
-      ? instance : 'https://login.salesforce.com';
-    const soapEndpoint = `${loginUrl}/services/Soap/u/59.0`;
+    // Use instance URL directly for SOAP login (works for both production and sandbox)
+    const soapEndpoint = `${instance}/services/Soap/u/59.0`;
     const fetchUrl = proxy ? proxy + '/' + soapEndpoint : soapEndpoint;
+    console.log('[SF SOAP Login] endpoint:', soapEndpoint, '| via proxy:', !!proxy);
     const res = await fetch(fetchUrl, {
       method: 'POST',
       headers: {
@@ -1092,11 +1092,14 @@ async function connectSFLogin() {
       showStatus('sf-status', '❌ ' + (faultMsg || 'Неизвестная ошибка'), 'fail');
     }
   } catch (e) {
+    console.error('[SF SOAP Login] error:', e);
     let msg = e.message;
     if (msg === 'Failed to fetch') {
-      msg = proxy
-        ? 'Не удалось подключиться — проверьте URL прокси и Instance URL'
-        : 'CORS ошибка — укажите CORS Proxy URL выше';
+      if (!proxy) {
+        msg = 'CORS ошибка — заполните CORS Proxy URL выше (без прокси браузер блокирует запросы к SF)';
+      } else {
+        msg = `Не удалось подключиться через прокси.\nПрокси: ${proxy}\nInstance: ${instance}\n\nПроверьте оба URL.`;
+      }
     }
     showStatus('sf-status', '❌ ' + msg, 'fail');
   } finally {
