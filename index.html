@@ -647,6 +647,7 @@
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <button class="btn" style="background:var(--surface2);color:var(--text)" onclick="goToStep2()">← Back</button>
         <button class="btn btn-primary" id="run-btn" onclick="runScripts()" style="padding:10px 28px">▶ Run scripts</button>
+        <button class="btn btn-danger" id="stop-btn" onclick="stopScripts()" style="padding:10px 28px;display:none">■ Stop</button>
         <div style="margin-left:auto;display:flex;gap:8px">
           <button class="btn btn-sm" style="background:var(--green-dim);color:var(--green);display:none" id="view-report-btn" onclick="navTo('report')">📊 Report</button>
           <button class="btn btn-sm" style="background:var(--surface2);color:var(--muted);display:none" id="export-btn" onclick="exportReportHTML()">⬇ Export</button>
@@ -1684,8 +1685,12 @@ function collectSelected() {
 // ══════════════════════════════════════════
 async function runScripts() {
   const btn = document.getElementById('run-btn');
-  btn.disabled = true;
-  btn.textContent = '⏳ Running…';
+  const stopBtn = document.getElementById('stop-btn');
+  btn.style.display = 'none';
+  stopBtn.style.display = '';
+  stopBtn.disabled = false;
+  stopBtn.textContent = '■ Stop';
+  STATE.runAborted = false;
 
   const log = document.getElementById('run-log');
   log.innerHTML = '';
@@ -1700,6 +1705,7 @@ async function runScripts() {
   document.getElementById('summary').style.display      = 'flex';
 
   for (let i = 0; i < scripts.length; i++) {
+    if (STATE.runAborted) break;
     const s = scripts[i];
     updateProgress((i / total) * 100);
     updateSummary(pass, fail, total, Date.now() - runStart);
@@ -1767,11 +1773,13 @@ async function runScripts() {
   const totalMs = Date.now() - runStart;
   updateProgress(100);
   updateSummary(pass, fail, total, totalMs);
+  stopBtn.style.display = 'none';
+  btn.style.display = '';
   btn.textContent = '▶ Run again';
   btn.disabled    = false;
 
   document.getElementById('run-title').innerHTML =
-    `<span>${fail === 0 ? '✅' : '⚠️'}</span>Done — ${pass}/${total} passed`;
+    `<span>${STATE.runAborted ? '⏹️' : fail === 0 ? '✅' : '⚠️'}</span>${STATE.runAborted ? 'Stopped' : 'Done'} — ${pass}/${total} passed${STATE.runAborted ? ' (aborted)' : ''}`;
 
   // Collect unique folders from this run
   const folders = [...new Set(scripts.map(s => s.folder))];
@@ -1789,6 +1797,12 @@ async function runScripts() {
   finalizeReport(run);
   document.getElementById('view-report-btn').style.display = '';
   document.getElementById('export-btn').style.display = '';
+}
+
+function stopScripts() {
+  STATE.runAborted = true;
+  document.getElementById('stop-btn').disabled = true;
+  document.getElementById('stop-btn').textContent = 'Stopping…';
 }
 
 function updateSummary(pass, fail, total, ms) {
