@@ -1715,6 +1715,8 @@ async function runScripts() {
         const raw = await fetch(s.url);
         body = await raw.text();
       }
+      // Strip BOM (U+FEFF) — invisible char that breaks Apex compiler
+      if (body.charCodeAt(0) === 0xFEFF) body = body.slice(1);
 
       const res  = await sfFetch('/services/data/v59.0/tooling/executeAnonymous/?anonymousBody=' + encodeURIComponent(body));
       if (!res.ok) {
